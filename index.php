@@ -1,8 +1,11 @@
 <?php
+
 // ============================================
 // SHOPICKER - Lista zakupów
-// Wersja: 2.1 (ulepszona UX)
+// Wersja: 2.1 (ultra-lekka)
 // ============================================
+header('Cache-Control: no-cache, must-revalidate');
+header('Expires: Mon, 26 Jul 1997 05:00:00 GMT');
 
 $plik_danych = 'statusy_sklepy.txt';
 $produkty_sklepy = require __DIR__ . '/produkty_sklepy.php';
@@ -147,22 +150,27 @@ $aktualne_ilosci = wczytajIlosci($plik_danych);
 // ============================================
 
 $filtr_sklepy = [];
-if (isset($_GET['sklepy']) && $_GET['sklepy'] !== '') {
-    $filtr_sklepy = explode(',', $_GET['sklepy']);
+if (isset($_GET['sklepy'])) {
+    // Jeśli parametr istnieje (nawet pusty) - użyj go
+    if ($_GET['sklepy'] !== '') {
+        $filtr_sklepy = explode(',', $_GET['sklepy']);
+    }
+    // Jeśli pusty string - $filtr_sklepy zostaje pustą tablicą = ukryj wszystko
+} else {
+    // Brak parametru - pokaż wszystkie (dla kompatybilności wstecznej)
+    $filtr_sklepy = null;
 }
 
 // ============================================
-// STATYSTYKI
+// STATYSTYKI (lekkie)
 // ============================================
 
-$statystyki = [
-    'wszystkie' => 0,
-    'do_kupienia' => 0,
-    'kupione' => 0
-];
-
+$do_kupienia_total = 0;
 foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
-    if (!empty($filtr_sklepy) && !in_array($sklep_nazwa, $filtr_sklepy)) continue;
+    // Jeśli $filtr_sklepy === null - pokaż wszystkie
+    // Jeśli $filtr_sklepy === [] (pusta tablica) - ukryj wszystkie
+    // Jeśli $filtr_sklepy ma wartości - pokaż tylko te
+    if ($filtr_sklepy !== null && !in_array($sklep_nazwa, $filtr_sklepy)) continue;
     
     foreach ($produkty_w_sklepie as $item) {
         $produkt = $item['name'];
@@ -170,11 +178,8 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
             ? $aktualne_ilosci[$sklep_nazwa][$produkt] 
             : null;
         
-        $statystyki['wszystkie']++;
         if ($ilosc_obecna !== null && $ilosc_obecna > 0) {
-            $statystyki['do_kupienia']++;
-        } else {
-            $statystyki['kupione']++;
+            $do_kupienia_total++;
         }
     }
 }
@@ -184,7 +189,7 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
 <html lang="pl">
 <head>
     <meta charset="UTF-8">
-    <title>Shopicker - handy shopping list</title>
+    <title>Shopicker - lista zakupów</title>
     
     <!-- Favicons -->
     <link rel="icon" type="image/png" href="/shopicker/assets/favicon-96x96.png" sizes="96x96" />
@@ -194,374 +199,388 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
     <meta name="apple-mobile-web-app-title" content="Shopicker" />
     <link rel="manifest" href="/shopicker/assets/site.webmanifest" />
     
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="stylesheet" href="/shopicker/style.css">
     
     <style>
+        /* Reset i podstawy */
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body {
+            padding-bottom: 80px;
+        }
+        
         /* ========================================
-           TOOLBAR Z WYBOREM SKLEPÓW
+           STICKY TOP BAR - minimalistyczny
            ======================================== */
         
-        .toolbar-sklepy {
-            background: white;
-            border-radius: 8px;
-            padding: 16px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        .top-bar {
             position: sticky;
             top: 0;
             z-index: 100;
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 10px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
         }
         
-        .toolbar-sklepy-tytul {
-            font-weight: 600;
-            margin-bottom: 12px;
+        .counter-badge {
+            background: #FF9800;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 1.1em;
+            white-space: nowrap;
+        }
+        
+        .counter-badge.zero {
+            background: #4CAF50;
+        }
+        
+        .top-actions {
             display: flex;
-            align-items: center;
-            justify-content: space-between;
+            gap: 8px;
+        }
+        
+        .btn-top {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.95em;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+        
+        .btn-toggle {
+            background: #2196F3;
+            color: white;
+        }
+        
+        .btn-toggle:active {
+            background: #1976D2;
+            transform: scale(0.95);
+        }
+        
+        .btn-edit {
+            background: #9C27B0;
+            color: white;
+        }
+        
+        .btn-edit:active {
+            background: #7B1FA2;
+            transform: scale(0.95);
+        }
+        
+        /* ========================================
+           WYBÓR SKLEPÓW - kompaktowy
+           ======================================== */
+        
+        .sklepy-picker {
+            background: #f5f5f5;
+            padding: 12px 15px;
+            margin-bottom: 10px;
         }
         
         .sklepy-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 10px;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 8px;
+            margin-top: 8px;
         }
         
-        .sklep-checkbox-label {
+        .sklep-chip {
             display: flex;
             align-items: center;
-            padding: 8px 12px;
-            background: #f5f5f5;
+            padding: 8px 10px;
+            background: white;
             border-radius: 6px;
+            border: 2px solid #ddd;
             cursor: pointer;
             transition: all 0.2s ease;
-            border: 2px solid transparent;
+            font-size: 0.95em;
         }
         
-        .sklep-checkbox-label:hover {
-            background: #e8f5e9;
-            border-color: #4CAF50;
-        }
-        
-        .sklep-checkbox-label input[type="checkbox"] {
-            margin-right: 8px;
+        .sklep-chip input {
+            margin: 0 6px 0 0;
             width: 18px;
             height: 18px;
-            cursor: pointer;
         }
         
-        .sklep-checkbox-label input[type="checkbox"]:checked + span {
+        .sklep-chip:has(input:checked) {
+            background: #E3F2FD;
+            border-color: #2196F3;
             font-weight: 600;
-            color: #4CAF50;
         }
         
-        .sklepy-akcje {
-            display: flex;
-            gap: 8px;
-        }
-        
-        .btn-zaznacz {
-            padding: 6px 12px;
-            background: #2196F3;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
+        .sklepy-label {
+            font-weight: 600;
             font-size: 0.9em;
-            transition: all 0.2s ease;
+            color: #666;
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         
-        .btn-zaznacz:hover {
-            background: #1976D2;
+        .btn-all-shops {
+            background: none;
+            border: none;
+            color: #2196F3;
+            font-size: 0.85em;
+            cursor: pointer;
+            padding: 4px 8px;
         }
         
         /* ========================================
-           STATYSTYKI
+           LISTA PRODUKTÓW - maksymalnie czytelna
            ======================================== */
         
-        .statystyki-box {
+        .sklep-sekcja {
+            margin-bottom: 20px;
+        }
+        
+        .sklep-sekcja.ukryty {
+            display: none;
+        }
+        
+        .sklep-nazwa {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
+            padding: 12px 15px;
+            margin: 0 0 10px 0;
             border-radius: 8px;
-            padding: 16px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        }
-        
-        .statystyki-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 16px;
-            margin-top: 12px;
-        }
-        
-        .stat-item {
-            text-align: center;
-            background: rgba(255, 255, 255, 0.2);
-            padding: 12px;
-            border-radius: 6px;
-        }
-        
-        .stat-number {
-            font-size: 2em;
+            font-size: 1.2em;
             font-weight: 700;
-            display: block;
-        }
-        
-        .stat-label {
-            font-size: 0.9em;
-            opacity: 0.9;
-        }
-        
-        /* ========================================
-           SZYBKIE AKCJE
-           ======================================== */
-        
-        .szybkie-akcje {
             display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-        
-        .btn-szybka-akcja {
-            flex: 1;
-            min-width: 150px;
-            padding: 12px 20px;
-            border: none;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
+            justify-content: space-between;
             align-items: center;
-            justify-content: center;
-            gap: 8px;
+            position: sticky;
+            top: 50px;
+            z-index: 50;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
         }
         
-        .btn-ukryj-zakupione {
-            background: #FF9800;
-            color: white;
+        .sklep-counter {
+            background: rgba(255,255,255,0.3);
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.85em;
         }
         
-        .btn-ukryj-zakupione:hover {
-            background: #F57C00;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(255, 152, 0, 0.3);
+        .lista {
+            list-style: none;
+            padding: 0;
+            margin: 0;
         }
-        
-        .btn-wyczysc-liste {
-            background: #f44336;
-            color: white;
-        }
-        
-        .btn-wyczysc-liste:hover {
-            background: #d32f2f;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(244, 67, 54, 0.3);
-        }
-        
-        /* ========================================
-           ULEPSZENIA PRODUKTÓW
-           ======================================== */
         
         .lista li {
+            background: white;
+            margin-bottom: 8px;
+            padding: 14px 15px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
             transition: all 0.3s ease;
-            position: relative;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
         
         .lista li.status-need {
-            background: #fff3e0;
-            border-left: 4px solid #FF9800;
+            border-left: 5px solid #FF9800;
+            background: #FFF8E1;
         }
         
         .lista li.status-have {
-            background: #e8f5e9;
-            border-left: 4px solid #4CAF50;
+            border-left: 5px solid #4CAF50;
+            opacity: 0.6;
         }
         
         .lista li.ukryty {
-            opacity: 0;
-            max-height: 0;
-            padding: 0;
-            margin: 0;
-            overflow: hidden;
+            display: none;
         }
         
         .nazwa-produktu {
-            font-weight: 600;
             flex: 1;
+            font-size: 1.1em;
+            font-weight: 600;
         }
         
         .ilosc-tekst {
+            display: block;
+            font-size: 0.9em;
             font-weight: 500;
             color: #FF9800;
+            margin-top: 4px;
         }
         
         .status-have .ilosc-tekst {
             color: #4CAF50;
         }
         
-        /* Animacja po kliknięciu "Kupione" */
-        @keyframes zakupiono {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); background: #4CAF50; }
-            100% { transform: scale(1); }
-        }
-        
-        .zakupiono-animacja {
-            animation: zakupiono 0.5s ease;
-        }
-        
-        /* ========================================
-           RESPONSYWNOŚĆ
-           ======================================== */
-        
-        @media (max-width: 768px) {
-            .toolbar-sklepy {
-                position: relative;
-            }
-            
-            .sklepy-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .statystyki-grid {
-                grid-template-columns: repeat(3, 1fr);
-                gap: 10px;
-            }
-            
-            .stat-number {
-                font-size: 1.5em;
-            }
-            
-            .stat-label {
-                font-size: 0.8em;
-            }
-            
-            .szybkie-akcje {
-                flex-direction: column;
-            }
-            
-            .btn-szybka-akcja {
-                width: 100%;
-            }
-        }
-        
-        /* ========================================
-           LICZNIK SKLEPU
-           ======================================== */
-        
-        .sklep-nazwa {
+        .formularz-ilosc {
             display: flex;
+            gap: 6px;
             align-items: center;
-            justify-content: space-between;
         }
         
-        .sklep-licznik {
-            font-size: 0.9em;
+        /* Przyciski w liście */
+        .przycisk {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+        
+        .przycisk-mam {
             background: #4CAF50;
             color: white;
-            padding: 4px 12px;
-            border-radius: 20px;
+            min-width: 100px;
+        }
+        
+        .przycisk-mam:active {
+            background: #45a049;
+            transform: scale(0.95);
+        }
+        
+        .przycisk-zmien {
+            background: #2196F3;
+            color: white;
+        }
+        
+        .przycisk-zmien:active {
+            background: #1976D2;
+            transform: scale(0.95);
+        }
+        
+        .wejscie-ilosc {
+            width: 60px;
+            padding: 8px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 1em;
+            text-align: center;
+            font-weight: 600;
+        }
+        
+        .jednostka-miary {
+            font-size: 0.9em;
+            color: #666;
             font-weight: 500;
         }
         
-        .sklep-licznik.zero {
-            background: #9e9e9e;
-        }
-        
         /* ========================================
-           PUSTE SKLEPY
+           RESPONSYWNOŚĆ MOBILE
            ======================================== */
         
-        .sklep-sekcja.wszystko-kupione {
-            opacity: 0.6;
+		@media (max-width: 600px) {
+			/* Status "Mam" - dwa wiersze */
+			.status-have .formularz-ilosc form {
+				display: grid;
+				grid-template-columns: 1fr auto;
+				grid-template-rows: auto auto;
+				gap: 8px;
+				width: 100%;
+			}
+			
+			.status-have .wejscie-ilosc {
+				grid-column: 1;
+				grid-row: 1;
+				width: 100%;
+			}
+			
+			.status-have .jednostka-miary {
+				grid-column: 2;
+				grid-row: 1;
+			}
+			
+			.status-have .przycisk-zmien {
+				grid-column: 1 / -1;
+				grid-row: 2;
+				width: 100%;
+			}
+		}
+
+
+		/* Bardzo małe ekrany */
+		@media (max-width: 400px) {
+			.sklepy-grid {
+				grid-template-columns: 1fr;
+			}
+			
+			.przycisk {
+				font-size: 0.9em;
+				padding: 10px 8px;
+			}
+			
+			.wejscie-ilosc {
+				width: 50px;
+			}
+		}
+        
+        /* ========================================
+           ANIMACJE
+           ======================================== */
+        
+        @keyframes kupiono {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
         }
         
-        .sklep-sekcja.wszystko-kupione .sklep-nazwa {
-            color: #9e9e9e;
+        .kupiono-anim {
+            animation: kupiono 0.3s ease;
         }
     </style>
 </head>
 <body>
 
     <!-- ============================================ -->
-    <!-- NAGŁÓWEK Z LOGO I PRZYCISKAMI -->
+    <!-- STICKY TOP BAR -->
     <!-- ============================================ -->
     
-    <div class="naglowek-kontener">
-        <h1 class="montserrat-logo">
-            <img src="/shopicker/assets/favicon.svg" 
-                 alt="Logo" 
-                 style="height: 1.5em; vertical-align: middle; margin-right: -0.2em">
-            Shopicker
-        </h1>
-        <div>
-            <a href="/shopicker/edytuj.php" class="przycisk-naglowek przycisk-edytuj">✏️ Edytuj</a>
-            <a href="/shopicker/" 
-               class="przycisk-naglowek przycisk-odswiez" 
-               onclick="sessionStorage.setItem('shoppingList_scrollPos', window.scrollY);">
-                🔄 Odśwież
+    <div class="top-bar">
+        <div class="counter-badge <?php echo $do_kupienia_total === 0 ? 'zero' : ''; ?>">
+            <?php if ($do_kupienia_total > 0): ?>
+                🛒 <?php echo $do_kupienia_total; ?>
+            <?php else: ?>
+                ✓ Gotowe!
+            <?php endif; ?>
+        </div>
+        <div class="top-actions">
+            <button class="btn-top btn-toggle" onclick="toggleUkryj()" id="btnToggle">
+                👁️
+            </button>
+            <a href="/shopicker/edytuj.php" class="btn-top btn-edit">
+                ✏️
             </a>
         </div>
-    </div>
-
-    <!-- ============================================ -->
-    <!-- STATYSTYKI -->
-    <!-- ============================================ -->
-    
-    <div class="statystyki-box">
-        <strong>📊 Podsumowanie</strong>
-        <div class="statystyki-grid">
-            <div class="stat-item">
-                <span class="stat-number"><?php echo $statystyki['wszystkie']; ?></span>
-                <span class="stat-label">Wszystkie</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-number"><?php echo $statystyki['do_kupienia']; ?></span>
-                <span class="stat-label">Do kupienia</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-number"><?php echo $statystyki['kupione']; ?></span>
-                <span class="stat-label">Kupione</span>
-            </div>
-        </div>
-    </div>
-
-    <!-- ============================================ -->
-    <!-- SZYBKIE AKCJE -->
-    <!-- ============================================ -->
-    
-    <div class="szybkie-akcje">
-        <button id="przyciskUkryj" 
-                class="btn-szybka-akcja btn-ukryj-zakupione" 
-                onclick="toggleUkryj()">
-            <span>👁️</span>
-            <span id="tekstPrzyciskuUkryj">Ukryj zakupione</span>
-        </button>
-        <button class="btn-szybka-akcja btn-wyczysc-liste" 
-                onclick="wyczyscListe()">
-            <span>🗑️</span>
-            <span>Wyczyść listę</span>
-        </button>
     </div>
 
     <!-- ============================================ -->
     <!-- WYBÓR SKLEPÓW -->
     <!-- ============================================ -->
     
-    <div class="toolbar-sklepy">
-        <div class="toolbar-sklepy-tytul">
-            <strong>🏪 Wybierz sklepy</strong>
-            <div class="sklepy-akcje">
-                <button class="btn-zaznacz" onclick="zaznaczWszystkieSklepy()">✓ Wszystkie</button>
-                <button class="btn-zaznacz" onclick="odznaczWszystkieSklepy()">✗ Żadne</button>
-            </div>
+    <div class="sklepy-picker">
+        <div class="sklepy-label">
+            🏪 Sklepy
+            <button class="btn-all-shops" onclick="toggleAllShops()" id="btnToggleShops">wszystkie</button>
         </div>
         <div class="sklepy-grid">
             <?php foreach (array_keys($produkty_sklepy) as $sklep_nazwa): ?>
-                <label class="sklep-checkbox-label">
+                <label class="sklep-chip">
                     <input type="checkbox" 
                            class="checkboxSklep" 
                            value="<?php echo htmlspecialchars($sklep_nazwa); ?>">
@@ -572,14 +591,13 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
     </div>
 
     <!-- ============================================ -->
-    <!-- LISTY PRODUKTÓW DLA KAŻDEGO SKLEPU -->
+    <!-- LISTY PRODUKTÓW -->
     <!-- ============================================ -->
 
     <?php foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie): ?>
         <?php if (!empty($filtr_sklepy) && !in_array($sklep_nazwa, $filtr_sklepy)) continue; ?>
         
         <?php
-        // Policz produkty do kupienia w tym sklepie
         $do_kupienia_sklep = 0;
         foreach ($produkty_w_sklepie as $item) {
             $produkt = $item['name'];
@@ -590,15 +608,14 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
                 $do_kupienia_sklep++;
             }
         }
-        $klasa_sklep = $do_kupienia_sklep === 0 ? 'wszystko-kupione' : '';
         ?>
         
-        <div class="sklep-sekcja <?php echo $klasa_sklep; ?>" data-sklep="<?php echo htmlspecialchars($sklep_nazwa); ?>">
+        <div class="sklep-sekcja" data-sklep="<?php echo htmlspecialchars($sklep_nazwa); ?>">
             <h2 class="sklep-nazwa">
                 <span><?php echo htmlspecialchars($sklep_nazwa); ?></span>
-                <span class="sklep-licznik <?php echo $do_kupienia_sklep === 0 ? 'zero' : ''; ?>">
-                    <?php echo $do_kupienia_sklep; ?> / <?php echo count($produkty_w_sklepie); ?>
-                </span>
+                <?php if ($do_kupienia_sklep > 0): ?>
+                    <span class="sklep-counter"><?php echo $do_kupienia_sklep; ?></span>
+                <?php endif; ?>
             </h2>
             <ul class="lista">
                 <?php foreach ($produkty_w_sklepie as $item): 
@@ -613,60 +630,42 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
                     $klasa_css = $czy_potrzebny ? 'status-need' : 'status-have';
                     $ilosc_tekst = $czy_potrzebny 
                         ? "$ilosc_obecna $jednostka" 
-                        : "✓ Kupione";
+                        : "✓ Mam";
                     $wartosc_input = $czy_potrzebny ? $ilosc_obecna : '';
                     $id_elementu = generuj_id_kotwicy($sklep_nazwa, $produkt);
                 ?>
                 
-                <li id="<?php echo htmlspecialchars($id_elementu); ?>" 
-                    class="<?php echo $klasa_css; ?>"
-                    data-sklep="<?php echo htmlspecialchars($sklep_nazwa); ?>"
-                    data-produkt="<?php echo htmlspecialchars($produkt); ?>">
-                    
+                <li id="<?php echo htmlspecialchars($id_elementu); ?>" class="<?php echo $klasa_css; ?>">
                     <span class="nazwa-produktu">
-                        <?php echo htmlspecialchars($produkt); ?> 
+                        <?php echo htmlspecialchars($produkt); ?>
                         <span class="ilosc-tekst"><?php echo $ilosc_tekst; ?></span>
                     </span>
                     
                     <div class="formularz-ilosc">
-                        
-                        <!-- Formularz "Kupione!" -->
-                        <form method="POST" 
-                              style="display:inline;" 
-                              onsubmit="animujKupione(event, '<?php echo htmlspecialchars($id_elementu); ?>')">
-                            <input type="hidden" name="produkt" value="<?php echo htmlspecialchars($produkt); ?>">
-                            <input type="hidden" name="sklep" value="<?php echo htmlspecialchars($sklep_nazwa); ?>">
-                            <?php if ($czy_potrzebny): ?>
-                                <button type="submit" 
-                                        name="oznacz_jako_mam" 
-                                        class="przycisk przycisk-mam">
-                                    ✓ Kupione!
+                        <?php if ($czy_potrzebny): ?>
+                            <form method="POST" style="display:inline;" onsubmit="animKupiono(this)">
+                                <input type="hidden" name="produkt" value="<?php echo htmlspecialchars($produkt); ?>">
+                                <input type="hidden" name="sklep" value="<?php echo htmlspecialchars($sklep_nazwa); ?>">
+                                <button type="submit" name="oznacz_jako_mam" class="przycisk przycisk-mam">
+                                    ✓ Kupione
                                 </button>
-                            <?php endif; ?>
-                        </form>
-
-                        <!-- Formularz ilości/Kup -->
-                        <?php if (!$czy_potrzebny): ?>
-                            <form method="POST" 
-                                  style="display:inline;" 
-                                  onsubmit="sessionStorage.setItem('shoppingList_scrollPos', window.scrollY);">
-                                <span class="jednostka-miary"><?php echo htmlspecialchars($jednostka); ?></span>
+                            </form>
+                        <?php else: ?>
+                            <form method="POST" style="display:inline;" onsubmit="saveScroll()">
                                 <input type="number" 
                                        name="ilosc" 
                                        value="<?php echo htmlspecialchars($wartosc_input); ?>" 
                                        min="0" 
                                        class="wejscie-ilosc"
                                        placeholder="1">
+                                <span class="jednostka-miary"><?php echo htmlspecialchars($jednostka); ?></span>
                                 <input type="hidden" name="produkt" value="<?php echo htmlspecialchars($produkt); ?>">
                                 <input type="hidden" name="sklep" value="<?php echo htmlspecialchars($sklep_nazwa); ?>">
-                                <button type="submit" 
-                                        name="ustaw_ilosc" 
-                                        class="przycisk przycisk-zmien">
-                                    🛒 Kup
+                                <button type="submit" name="ustaw_ilosc" class="przycisk przycisk-zmien">
+                                    Kup
                                 </button>
                             </form>
                         <?php endif; ?>
-                        
                     </div>
                 </li>
                 
@@ -676,256 +675,200 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
     <?php endforeach; ?>
 
     <script>
-        // Klucze localStorage
-        const STORAGE_KEY_HIDE = 'listaZakupow_ukryte';
-        const STORAGE_KEY_SCROLL = 'shoppingList_scrollPos';
-        const STORAGE_KEY_SKLEPY = 'karteczka_wybrane_sklepy';
+        const STORAGE_HIDE = 'listaZakupow_ukryte';
+        const STORAGE_SCROLL = 'shoppingList_scrollPos';
+        const STORAGE_SKLEPY = 'karteczka_wybrane_sklepy';
         
-        // Elementy DOM
-        const przyciskUkryj = document.getElementById('przyciskUkryj');
-        const tekstPrzyciskuUkryj = document.getElementById('tekstPrzyciskuUkryj');
         const checkboxes = document.querySelectorAll('.checkboxSklep');
-
-        // ========================================
-        // FUNKCJA: Animacja kupienia
-        // ========================================
         
-        function animujKupione(event, elementId) {
-            sessionStorage.setItem('shoppingList_scrollPos', window.scrollY);
-            const element = document.getElementById(elementId);
-            if (element) {
-                element.classList.add('zakupiono-animacja');
-            }
-        }
-
         // ========================================
-        // FUNKCJA: Toggle ukrywania produktów
+        // Toggle ukrywania
         // ========================================
         
         function toggleUkryj() {
-            const elementyGot = document.querySelectorAll('.status-have');
-            let wszystkieUkryte = true;
+            const mam = document.querySelectorAll('.status-have');
+            const anyVisible = Array.from(mam).some(el => !el.classList.contains('ukryty'));
             
-            elementyGot.forEach(el => {
-                if (!el.classList.contains('ukryty')) {
-                    wszystkieUkryte = false;
-                }
-            });
-            
-            if (wszystkieUkryte) {
-                elementyGot.forEach(el => el.classList.remove('ukryty'));
-                tekstPrzyciskuUkryj.textContent = 'Ukryj zakupione';
-                localStorage.setItem(STORAGE_KEY_HIDE, 'pokazane');
-            } else {
-                elementyGot.forEach(el => el.classList.add('ukryty'));
-                tekstPrzyciskuUkryj.textContent = 'Pokaż zakupione';
-                localStorage.setItem(STORAGE_KEY_HIDE, 'ukryte');
-            }
-            
-            ukryjPusteSekcjeSklepy();
-        }
-
-        // ========================================
-        // FUNKCJA: Ukrywanie pustych sekcji sklepów
-        // ========================================
-        
-        function ukryjPusteSekcjeSklepy() {
-            const sekcjeSklepy = document.querySelectorAll('.sklep-sekcja');
-            
-            sekcjeSklepy.forEach(sekcja => {
-                const lista = sekcja.querySelector('.lista');
-                if (!lista) return;
-                
-                const widoczneElementy = Array.from(lista.querySelectorAll('li')).filter(li => {
-                    return !li.classList.contains('ukryty');
-                });
-                
-                if (widoczneElementy.length === 0) {
-                    sekcja.classList.add('ukryty');
+            mam.forEach(el => {
+                if (anyVisible) {
+                    el.classList.add('ukryty');
                 } else {
-                    sekcja.classList.remove('ukryty');
+                    el.classList.remove('ukryty');
                 }
             });
-        }
-
-        // ========================================
-        // FUNKCJA: Przywracanie stanu ukrycia
-        // ========================================
-        
-        function przywrocStanUkrycia() {
-            const stanZapamietany = localStorage.getItem(STORAGE_KEY_HIDE);
-            if (stanZapamietany === 'ukryte') {
-                document.querySelectorAll('.status-have').forEach(el => el.classList.add('ukryty'));
-                tekstPrzyciskuUkryj.textContent = 'Pokaż zakupione';
-            } else {
-                tekstPrzyciskuUkryj.textContent = 'Ukryj zakupione';
-            }
             
-            ukryjPusteSekcjeSklepy();
+            localStorage.setItem(STORAGE_HIDE, anyVisible ? 'ukryte' : 'pokazane');
+            ukryjPusteSklepy();
         }
-
-        // ========================================
-        // FUNKCJA: Zapisywanie pozycji scrolla
-        // ========================================
         
-        window.addEventListener('scroll', () => {
-            sessionStorage.setItem(STORAGE_KEY_SCROLL, window.scrollY);
-        });
-
-        function przywrocPozycjePrzewijania() {
-            const zapisanaPozycja = sessionStorage.getItem(STORAGE_KEY_SCROLL);
-            if (zapisanaPozycja) {
-                window.scrollTo(0, parseInt(zapisanaPozycja, 10));
-                sessionStorage.removeItem(STORAGE_KEY_SCROLL);
-            }
-        }
-
-        // ========================================
-        // FUNKCJA: Dodawanie ukrytych pól do formularzy
-        // ========================================
-        
-        function dodajUkrytePoleSklepy() {
-            const aktywne_sklepy = localStorage.getItem(STORAGE_KEY_SKLEPY) || '';
-            
-            document.querySelectorAll('form').forEach(f => {
-                if (!f.querySelector('input[name="widoczne_sklepy"]')) {
-                    const hidden = document.createElement('input');
-                    hidden.type = 'hidden';
-                    hidden.name = 'widoczne_sklepy';
-                    hidden.value = aktywne_sklepy;
-                    f.appendChild(hidden);
-                }
+        function ukryjPusteSklepy() {
+            document.querySelectorAll('.sklep-sekcja').forEach(sekcja => {
+                const widoczne = sekcja.querySelectorAll('li:not(.ukryty)');
+                sekcja.classList.toggle('ukryty', widoczne.length === 0);
             });
         }
-
+        
         // ========================================
-        // FUNKCJA: Przywracanie wyboru sklepów
+        // Sklepy
         // ========================================
         
-		function przywrocWyborSklepow() {
+		function loadSklepy() {
 			const urlParams = new URLSearchParams(window.location.search);
-			const sklepyZUrl = urlParams.get('sklepy');
+			const fromUrl = urlParams.get('sklepy');
 			
-			if (sklepyZUrl) {
-				localStorage.setItem(STORAGE_KEY_SKLEPY, sklepyZUrl);
-				const lista = sklepyZUrl.split(',').filter(s => s.trim() !== '');
-				checkboxes.forEach(ch => {
-					ch.checked = lista.includes(ch.value);
-				});
+			if (fromUrl !== null) {
+				// Mamy parametr w URL (nawet pusty)
+				localStorage.setItem(STORAGE_SKLEPY, fromUrl);
+				const lista = fromUrl.split(',').filter(s => s.trim() !== '');
+				checkboxes.forEach(ch => ch.checked = lista.includes(ch.value));
 			} else {
-				const zapamietane = localStorage.getItem(STORAGE_KEY_SKLEPY);
-				if (zapamietane !== null && zapamietane !== '') {
-					const lista = zapamietane.split(',').filter(s => s.trim() !== '');
-					checkboxes.forEach(ch => {
-						ch.checked = lista.includes(ch.value);
-					});
-				} else if (zapamietane === '') {
-					// Pusty string = świadomie odznaczone wszystko
-					checkboxes.forEach(ch => {
-						ch.checked = false;
-					});
+				// Brak parametru - sprawdź localStorage
+				const saved = localStorage.getItem(STORAGE_SKLEPY);
+				if (saved !== null) {
+					const lista = saved.split(',').filter(s => s.trim() !== '');
+					checkboxes.forEach(ch => ch.checked = lista.includes(ch.value));
 				} else {
-					// null = pierwszy raz, zaznacz wszystkie
-					checkboxes.forEach(ch => {
-						ch.checked = true;
-					});
+					// Pierwsze uruchomienie - zaznacz wszystkie
+					checkboxes.forEach(ch => ch.checked = true);
 				}
 			}
+			// Aktualizuj tekst przycisku
+			const btnToggleShops = document.getElementById('btnToggleShops');
+			if (btnToggleShops) {
+				const allChecked = Array.from(checkboxes).every(ch => ch.checked);
+				btnToggleShops.textContent = allChecked ? 'żaden' : 'wszystkie';
+			}			
 		}
-
-        // ========================================
-        // FUNKCJA: Zapisywanie wyboru sklepów
-        // ========================================
         
-        function zapiszWyborSklepow() {
-            const wybrane = Array.from(checkboxes)
-                .filter(ch => ch.checked)
-                .map(ch => ch.value);
-            
-            localStorage.setItem(STORAGE_KEY_SKLEPY, wybrane.join(','));
-            
-            const param = wybrane.length ? '?sklepy=' + wybrane.join(',') : '';
-            sessionStorage.setItem('shoppingList_scrollPos', 0);
-            window.location.href = '/shopicker/' + param;
-        }
-
-        // ========================================
-        // FUNKCJA: Aktualizacja linku Odśwież
-        // ========================================
+		function saveSklepy() {
+			const wybrane = Array.from(checkboxes)
+				.filter(ch => ch.checked)
+				.map(ch => ch.value);
+			
+			const sklepyParam = wybrane.join(',');
+			localStorage.setItem(STORAGE_SKLEPY, sklepyParam);
+			
+			// ZAWSZE dodaj parametr sklepy (nawet jeśli pusty)
+			const url = '/shopicker/?sklepy=' + encodeURIComponent(sklepyParam);
+			sessionStorage.setItem(STORAGE_SCROLL, window.scrollY);
+			window.location.href = url;
+		}
         
-        function aktualizujLinkOdswiez() {
-            const wybrane = localStorage.getItem(STORAGE_KEY_SKLEPY);
-            const odswiezLink = document.querySelector('.przycisk-odswiez');
-            
-            if (odswiezLink) {
-                if (wybrane && wybrane.trim() !== '') {
-                    odswiezLink.href = '/shopicker/?sklepy=' + encodeURIComponent(wybrane);
-                } else {
-                    odswiezLink.href = '/shopicker/';
-                }
-            }
-        }
-
-        // ========================================
-        // FUNKCJA: Zaznacz/odznacz wszystkie sklepy
-        // ========================================
-        
-        function zaznaczWszystkieSklepy() {
-            checkboxes.forEach(ch => ch.checked = true);
-            zapiszWyborSklepow();
-        }
-		
-		function odznaczWszystkieSklepy() {
-			if (confirm('Czy na pewno odznaczyć wszystkie sklepy? Lista będzie pusta.')) {
+		function toggleAllShops() {
+			const allChecked = Array.from(checkboxes).every(ch => ch.checked);
+			
+			if (allChecked) {
+				// Są wszystkie zaznaczone - odznacz wszystkie
 				checkboxes.forEach(ch => ch.checked = false);
-				localStorage.setItem(STORAGE_KEY_SKLEPY, ''); // ← Pusty string zamiast usuwania
-				window.location.href = '/shopicker/'; // Reload bez parametrów
+			} else {
+				// Niektóre odznaczone - zaznacz wszystkie
+				checkboxes.forEach(ch => ch.checked = true);
+			}
+			
+			saveSklepy();
+			
+			// Aktualizuj tekst przed przeładowaniem
+			const btnToggleShops = document.getElementById('btnToggleShops');
+			if (btnToggleShops) {
+				const allChecked = Array.from(checkboxes).every(ch => ch.checked);
+				btnToggleShops.textContent = allChecked ? 'żaden' : 'wszystkie';
+			}			
+		}
+        
+        checkboxes.forEach(ch => ch.addEventListener('change', saveSklepy));
+        
+        // ========================================
+        // Scroll & animacje
+        // ========================================
+        
+        function saveScroll() {
+            sessionStorage.setItem(STORAGE_SCROLL, window.scrollY);
+        }
+        
+		function restoreScroll() {
+			const pos = sessionStorage.getItem(STORAGE_SCROLL);
+			if (pos) {
+				// Natychmiastowe przywrócenie bez animacji
+				const scrollPos = parseInt(pos);
+				window.scrollTo({
+					top: scrollPos,
+					behavior: 'instant' // Bez smooth scrollowania
+				});
+				
+				// Fallback dla starszych przeglądarek
+				if (window.scrollY !== scrollPos) {
+					window.scrollTo(0, scrollPos);
+				}
+				
+				// Wyczyść dopiero po upewnieniu się że scroll działa
+				setTimeout(() => {
+					sessionStorage.removeItem(STORAGE_SCROLL);
+				}, 100);
 			}
 		}
-
+        
+		function animKupiono(form) {
+			// Zapisz dokładną pozycję PRZED submitem
+			const currentScroll = window.scrollY;
+			sessionStorage.setItem(STORAGE_SCROLL, currentScroll);
+			
+			const li = form.closest('li');
+			if (li) {
+				li.classList.add('kupiono-anim');
+				// Dodaj małe opóźnienie żeby animacja była widoczna
+				setTimeout(() => {
+					sessionStorage.setItem(STORAGE_SCROLL, currentScroll);
+				}, 50);
+			}
+			
+			return true; // Pozwól na submit
+		}
+        
+        //window.addEventListener('scroll', () => {
+        //    sessionStorage.setItem(STORAGE_SCROLL, window.scrollY);
+        //});
+		
+		let scrollTimeout;
+		window.addEventListener('scroll', () => {
+			if (scrollTimeout) clearTimeout(scrollTimeout);
+			scrollTimeout = setTimeout(() => {
+				sessionStorage.setItem(STORAGE_SCROLL, window.scrollY);
+			}, 100);
+		}, { passive: true });		
+		
+        
         // ========================================
-        // FUNKCJA: Wyczyść całą listę
+        // Ukryte pola w formularzach
         // ========================================
         
-        function wyczyscListe() {
-            if (confirm('Czy na pewno chcesz wyczyść całą listę zakupów? Wszystkie produkty zostaną oznaczone jako kupione.')) {
-                const formularze = document.querySelectorAll('form[method="POST"]');
-                let licznik = 0;
-                
-                formularze.forEach(form => {
-                    if (form.querySelector('button[name="oznacz_jako_mam"]')) {
-                        licznik++;
-                    }
-                });
-                
-                if (licznik > 0) {
-                    // Tutaj można dodać AJAX albo przekierowanie do specjalnego skryptu
-                    alert(`Oznaczono ${licznik} produktów jako kupione!`);
-                    location.reload();
-                } else {
-                    alert('Wszystkie produkty są już kupione!');
+        function addHiddenFields() {
+            const sklepy = localStorage.getItem(STORAGE_SKLEPY) || '';
+            document.querySelectorAll('form').forEach(f => {
+                if (!f.querySelector('input[name="widoczne_sklepy"]')) {
+                    const h = document.createElement('input');
+                    h.type = 'hidden';
+                    h.name = 'widoczne_sklepy';
+                    h.value = sklepy;
+                    f.appendChild(h);
                 }
-            }
+            });
         }
-
-        // ========================================
-        // EVENT LISTENERS
-        // ========================================
         
-        checkboxes.forEach(ch => {
-            ch.addEventListener('change', zapiszWyborSklepow);
-        });
-
         // ========================================
-        // INICJALIZACJA PO ZAŁADOWANIU DOM
+        // Init
         // ========================================
         
         document.addEventListener('DOMContentLoaded', () => {
-            przywrocWyborSklepow();
-            przywrocStanUkrycia();
-            dodajUkrytePoleSklepy();
-            aktualizujLinkOdswiez();
-            przywrocPozycjePrzewijania();
+            loadSklepy();
+            
+            const hideState = localStorage.getItem(STORAGE_HIDE);
+            if (hideState === 'ukryte') {
+                document.querySelectorAll('.status-have').forEach(el => el.classList.add('ukryty'));
+            }
+            ukryjPusteSklepy();
+            
+            addHiddenFields();
+            restoreScroll();
         });
     </script>
 

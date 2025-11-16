@@ -2,6 +2,8 @@
 // ============================================
 // SHOPICKER - Edytor listy produktów
 // ============================================
+header('Cache-Control: no-cache, must-revalidate');
+header('Expires: Mon, 26 Jul 1997 05:00:00 GMT');
 
 $plik_konfiguracji = __DIR__ . '/produkty_sklepy.php';
 $wersja_backup = __DIR__ . '/produkty_sklepy_backup_' . date('Y-m-d_His') . '.php';
