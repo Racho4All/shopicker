@@ -136,237 +136,495 @@ if (!is_array($produkty_sklepy)) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="/shopicker/style.css">
     <style>
+        :root {
+            --primary-color: #4CAF50;
+            --primary-hover: #45a049;
+            --secondary-color: #2196F3;
+            --secondary-hover: #1976D2;
+            --danger-color: #f44336;
+            --danger-hover: #d32f2f;
+            --border-color: #ddd;
+            --bg-light: #f9f9f9;
+            --bg-lighter: #fafafa;
+            --shadow: 0 2px 8px rgba(0,0,0,0.1);
+            --shadow-hover: 0 4px 12px rgba(0,0,0,0.15);
+            --radius: 8px;
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            padding-bottom: 100px;
+        }
+
         .edytor-kontener {
             max-width: 1200px;
             margin: 20px auto;
             padding: 20px;
         }
         
+        /* ========================================
+           SKLEPY
+           ======================================== */
+        
         .sklep-edytor {
-            background: #f9f9f9;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 20px;
+            background: white;
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius);
+            padding: 20px;
+            margin-bottom: 24px;
             cursor: move;
-            transition: all 0.3s ease;
+            transition: var(--transition);
+            box-shadow: var(--shadow);
+            position: relative;
+        }
+        
+        .sklep-edytor:hover {
+            box-shadow: var(--shadow-hover);
+            transform: translateY(-2px);
         }
         
         .sklep-edytor.dragging {
-            opacity: 0.5;
-            border-color: #4CAF50;
+            opacity: 0.6;
+            border-color: var(--primary-color);
+            box-shadow: 0 8px 20px rgba(76, 175, 80, 0.3);
         }
         
         .sklep-edytor.drag-over {
-            border-color: #2196F3;
+            border-color: var(--secondary-color);
             background: #e3f2fd;
+            border-style: dashed;
         }
         
         .sklep-naglowek {
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            margin-bottom: 15px;
-            gap: 10px;
-            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 20px;
         }
         
         .sklep-naglowek-drag {
-            cursor: move;
+            cursor: grab;
             font-size: 1.5em;
-            color: #666;
-            padding: 0 10px;
+            color: #999;
+            padding: 8px;
             user-select: none;
+            transition: var(--transition);
+            border-radius: 4px;
+        }
+        
+        .sklep-naglowek-drag:hover {
+            color: var(--primary-color);
+            background: var(--bg-light);
+        }
+        
+        .sklep-naglowek-drag:active {
+            cursor: grabbing;
+            color: var(--primary-hover);
         }
         
         .sklep-naglowek input {
-            font-size: 1.2em;
-            font-weight: bold;
-            padding: 8px;
-            border: 2px solid #4CAF50;
-            border-radius: 4px;
             flex: 1;
-            min-width: 200px;
+            font-size: 1.2em;
+            font-weight: 600;
+            padding: 12px 16px;
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius);
+            transition: var(--transition);
+            background: var(--bg-lighter);
+        }
+        
+        .sklep-naglowek input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            background: white;
+            box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+        }
+        
+        /* ========================================
+           PRODUKTY
+           ======================================== */
+        
+        .produkty-kontener {
+            background: var(--bg-lighter);
+            border-radius: var(--radius);
+            padding: 16px;
+            margin-bottom: 16px;
         }
         
         .produkt-edytor {
             display: grid;
-            grid-template-columns: 2fr 1fr auto auto;
-            gap: 8px;
-            margin-bottom: 10px;
+            grid-template-columns: auto 1fr 120px auto;
+            gap: 10px;
+            margin-bottom: 12px;
             align-items: center;
+            background: white;
+            padding: 12px;
+            border-radius: var(--radius);
+            border: 1px solid var(--border-color);
+            transition: var(--transition);
+        }
+        
+        .produkt-edytor:last-child {
+            margin-bottom: 0;
+        }
+        
+        .produkt-edytor:hover {
+            box-shadow: var(--shadow);
         }
         
         .produkt-edytor.dragging {
-            opacity: 0.5;
+            opacity: 0.6;
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.2);
         }
         
         .produkt-drag-handle {
-            cursor: move;
+            cursor: grab;
             font-size: 1.2em;
-            color: #999;
+            color: #bbb;
+            padding: 4px 8px;
             user-select: none;
-            text-align: center;
+            transition: var(--transition);
+            border-radius: 4px;
+        }
+        
+        .produkt-drag-handle:hover {
+            color: var(--primary-color);
+            background: var(--bg-light);
+        }
+        
+        .produkt-drag-handle:active {
+            cursor: grabbing;
         }
         
         .produkt-edytor input[type="text"] {
-            padding: 8px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
+            padding: 10px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
             width: 100%;
-            box-sizing: border-box;
+            font-size: 0.95em;
+            transition: var(--transition);
         }
         
-        .btn-usun {
-            background: #f44336;
-            color: white;
+        .produkt-edytor input[type="text"]:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+        }
+        
+        /* ========================================
+           PRZYCISKI
+           ======================================== */
+        
+        .btn-base {
             border: none;
-            padding: 8px 12px;
-            border-radius: 4px;
+            padding: 10px 20px;
+            border-radius: 6px;
             cursor: pointer;
+            font-size: 1em;
+            font-weight: 500;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
             white-space: nowrap;
         }
         
+        .btn-base:active {
+            transform: scale(0.98);
+        }
+        
+        .btn-usun {
+            background: var(--danger-color);
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 0.9em;
+        }
+        
         .btn-usun:hover {
-            background: #d32f2f;
+            background: var(--danger-hover);
+            box-shadow: 0 2px 8px rgba(244, 67, 54, 0.3);
         }
         
         .btn-dodaj {
-            background: #4CAF50;
+            background: var(--primary-color);
             color: white;
+            width: 100%;
+            padding: 12px;
             border: none;
-            padding: 8px 16px;
-            border-radius: 4px;
+            border-radius: 6px;
             cursor: pointer;
-            margin-top: 10px;
+            font-weight: 500;
+            transition: var(--transition);
         }
         
         .btn-dodaj:hover {
-            background: #45a049;
+            background: var(--primary-hover);
+            box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
         }
         
         .btn-dodaj-sklep {
-            background: #2196F3;
+            background: var(--secondary-color);
             color: white;
             border: none;
-            padding: 12px 24px;
-            border-radius: 4px;
+            padding: 16px 24px;
+            border-radius: var(--radius);
             cursor: pointer;
             font-size: 1.1em;
-            margin: 20px 0;
+            font-weight: 600;
+            margin: 24px 0;
             width: 100%;
+            transition: var(--transition);
         }
         
         .btn-dodaj-sklep:hover {
-            background: #1976D2;
+            background: var(--secondary-hover);
+            box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
         }
         
         .przyciski-akcji {
             display: flex;
-            gap: 10px;
-            margin: 20px 0;
-            flex-wrap: wrap;
+            gap: 12px;
+            margin: 30px 0;
         }
         
         .btn-zapisz {
-            background: #4CAF50;
+            background: var(--primary-color);
             color: white;
             border: none;
-            padding: 12px 32px;
-            border-radius: 4px;
+            padding: 16px 32px;
+            border-radius: var(--radius);
             cursor: pointer;
             font-size: 1.1em;
+            font-weight: 600;
             flex: 1;
-            min-width: 150px;
+            transition: var(--transition);
         }
         
         .btn-zapisz:hover {
-            background: #45a049;
+            background: var(--primary-hover);
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
         }
         
         .btn-anuluj {
             background: #757575;
             color: white;
             border: none;
-            padding: 12px 32px;
-            border-radius: 4px;
+            padding: 16px 32px;
+            border-radius: var(--radius);
             cursor: pointer;
             font-size: 1.1em;
+            font-weight: 600;
             text-decoration: none;
-            display: inline-block;
-            text-align: center;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
             flex: 1;
-            min-width: 150px;
+            transition: var(--transition);
         }
         
         .btn-anuluj:hover {
             background: #616161;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
         }
         
+        /* ========================================
+           KOMUNIKATY
+           ======================================== */
+        
         .komunikat {
-            padding: 15px;
-            border-radius: 4px;
-            margin-bottom: 20px;
+            padding: 20px;
+            border-radius: var(--radius);
+            margin-bottom: 24px;
+            box-shadow: var(--shadow);
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
         
         .komunikat.sukces {
             background: #d4edda;
-            border: 1px solid #c3e6cb;
+            border: 2px solid #c3e6cb;
             color: #155724;
         }
         
         .komunikat.blad {
             background: #f8d7da;
-            border: 1px solid #f5c6cb;
+            border: 2px solid #f5c6cb;
             color: #721c24;
         }
         
-        /* Responsywność dla małych ekranów */
+        .btn-powrot-sukces {
+            display: inline-block;
+            background: var(--primary-color);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: var(--transition);
+            margin-top: 12px;
+        }
+        
+        .btn-powrot-sukces:hover {
+            background: var(--primary-hover);
+            box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+        }
+        
+        /* ========================================
+           PŁYWAJĄCY PRZYCISK
+           ======================================== */
+        
+        .plywajacy-zapisz {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+            animation: fadeInUp 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px) scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        
+        .btn-plywajacy-zapisz {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 16px 28px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: 600;
+            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .btn-plywajacy-zapisz:hover {
+            background: var(--primary-hover);
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 8px 25px rgba(76, 175, 80, 0.5);
+        }
+        
+        .btn-plywajacy-zapisz:active {
+            transform: translateY(-1px) scale(1.02);
+        }
+        
+        /* ========================================
+           WSKAŹNIK LICZBY PRODUKTÓW
+           ======================================== */
+        
+        .licznik-produktow {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--bg-light);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            color: #666;
+            font-weight: 500;
+        }
+        
+        /* ========================================
+           PUSTY SKLEP
+           ======================================== */
+        
+        .pusty-sklep-info {
+            text-align: center;
+            padding: 30px;
+            background: var(--bg-lighter);
+            border-radius: var(--radius);
+            color: #999;
+            font-style: italic;
+        }
+        
+        /* ========================================
+           RESPONSYWNOŚĆ
+           ======================================== */
+        
         @media (max-width: 768px) {
             .edytor-kontener {
-                padding: 10px;
-                margin: 10px auto;
+                padding: 12px;
+                margin: 12px auto;
+            }
+            
+            .sklep-edytor {
+                padding: 16px;
+                margin-bottom: 16px;
             }
             
             .sklep-naglowek {
-                flex-direction: column;
-                align-items: stretch;
+                flex-wrap: wrap;
             }
             
             .sklep-naglowek input {
-                font-size: 1em;
-                min-width: auto;
+                font-size: 1.1em;
                 width: 100%;
+                order: 2;
+            }
+            
+            .sklep-naglowek-drag {
+                order: 1;
             }
             
             .btn-usun {
+                order: 3;
                 width: 100%;
-                padding: 10px;
+                padding: 12px;
+            }
+            
+            .produkty-kontener {
+                padding: 12px;
             }
             
             .produkt-edytor {
                 grid-template-columns: auto 1fr;
-                gap: 5px;
+                gap: 8px;
+                padding: 10px;
             }
             
             .produkt-drag-handle {
-                grid-row: 1 / 3;
+                grid-row: 1 / 4;
             }
             
-            .produkt-edytor input[type="text"]:first-of-type {
+            .produkt-edytor input[type="text"]:nth-of-type(1) {
                 grid-column: 2;
             }
             
-            .produkt-edytor input[type="text"]:last-of-type {
+            .produkt-edytor input[type="text"]:nth-of-type(2) {
                 grid-column: 2;
             }
             
             .produkt-edytor .btn-usun {
                 grid-column: 1 / 3;
-                margin-top: 5px;
-            }
-            
-            .btn-dodaj {
                 width: 100%;
             }
             
@@ -377,121 +635,76 @@ if (!is_array($produkty_sklepy)) {
             .btn-zapisz,
             .btn-anuluj {
                 width: 100%;
-                min-width: auto;
-            }
-        }
-        
-        @media (max-width: 480px) {
-            .sklep-naglowek input {
-                font-size: 0.9em;
-                padding: 6px;
             }
             
-            .produkt-edytor input[type="text"] {
-                font-size: 0.9em;
-                padding: 6px;
-            }
-            
-            .sklep-naglowek-drag {
-                font-size: 1.2em;
-            }
-        }
-        .btn-powrot-sukces {
-            display: inline-block;
-            background: #4CAF50;
-            color: white;
-            padding: 12px 24px;
-            border-radius: 4px;
-            text-decoration: none;
-            font-weight: bold;
-            transition: background 0.3s;
-            font-size: 1em;
-        }
-        
-        .btn-powrot-sukces:hover {
-            background: #45a049;
-        }
-        
-        @media (max-width: 768px) {
-            .btn-powrot-sukces {
-                display: block;
-                text-align: center;
-                width: 100%;
-            }
-        }
-        /* Pływający przycisk zapisz */
-        .plywajacy-zapisz {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            z-index: 1000;
-            animation: fadeInUp 0.3s ease-out;
-        }
-        
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        .btn-plywajacy-zapisz {
-            background: #4CAF50;
-            color: white;
-            border: none;
-            padding: 15px 25px;
-            border-radius: 50px;
-            cursor: pointer;
-            font-size: 1.1em;
-            font-weight: bold;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .btn-plywajacy-zapisz:hover {
-            background: #45a049;
-            transform: scale(1.05);
-            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
-        }
-        
-        .btn-plywajacy-zapisz:active {
-            transform: scale(0.95);
-        }
-        
-        @media (max-width: 768px) {
             .plywajacy-zapisz {
-                bottom: 15px;
-                right: 15px;
-                left: 15px;
+                bottom: 12px;
+                right: 12px;
+                left: 12px;
             }
             
             .btn-plywajacy-zapisz {
                 width: 100%;
                 justify-content: center;
                 padding: 18px 20px;
-                font-size: 1.2em;
+                font-size: 1.15em;
             }
         }
         
         @media (max-width: 480px) {
-            .plywajacy-zapisz {
-                bottom: 10px;
-                right: 10px;
-                left: 10px;
+            .sklep-naglowek input {
+                font-size: 1em;
+                padding: 10px 12px;
+            }
+            
+            .produkt-edytor input[type="text"] {
+                font-size: 0.9em;
+                padding: 8px 10px;
+            }
+            
+            .sklep-naglowek-drag {
+                font-size: 1.3em;
             }
             
             .btn-plywajacy-zapisz {
                 padding: 16px 18px;
                 font-size: 1.1em;
             }
-        }		
+        }
+        
+        /* ========================================
+           ANIMACJE HOVER
+           ======================================== */
+        
+        @media (hover: hover) {
+            .sklep-edytor::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 4px;
+                background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+                border-radius: var(--radius) var(--radius) 0 0;
+                opacity: 0;
+                transition: opacity 0.3s ease;
+            }
+            
+            .sklep-edytor:hover::before {
+                opacity: 1;
+            }
+        }
+        
+        /* ========================================
+           FOCUS VISIBLE (dostępność)
+           ======================================== */
+        
+        button:focus-visible,
+        input:focus-visible,
+        a:focus-visible {
+            outline: 3px solid var(--primary-color);
+            outline-offset: 2px;
+        }
     </style>
 </head>
 <body>
@@ -528,36 +741,48 @@ if (!is_array($produkty_sklepy)) {
                 <?php foreach ($produkty_sklepy as $sklep_nazwa => $produkty): ?>
                     <div class="sklep-edytor" data-sklep-index="<?php echo $sklep_index; ?>" draggable="true">
                         <div class="sklep-naglowek">
-                            <span class="sklep-naglowek-drag">☰</span>
+                            <span class="sklep-naglowek-drag" title="Przeciągnij, aby zmienić kolejność">☰</span>
                             <input type="text" 
                                    name="sklepy[<?php echo $sklep_index; ?>][nazwa]" 
                                    value="<?php echo htmlspecialchars($sklep_nazwa); ?>"
                                    placeholder="Nazwa sklepu"
-                                   required>
-                            <button type="button" class="btn-usun" onclick="usunSklep(this)">
+                                   required
+                                   aria-label="Nazwa sklepu">
+                            <span class="licznik-produktow">
+                                📦 <span class="liczba-produktow"><?php echo count($produkty); ?></span>
+                            </span>
+                            <button type="button" class="btn-usun" onclick="usunSklep(this)" title="Usuń sklep">
                                 🗑️ Usuń sklep
                             </button>
                         </div>
                         
                         <div class="produkty-kontener">
-                            <?php $produkt_index = 0; ?>
-                            <?php foreach ($produkty as $produkt): ?>
-                                <div class="produkt-edytor" draggable="true">
-                                    <span class="produkt-drag-handle">☰</span>
-                                    <input type="text" 
-                                           name="sklepy[<?php echo $sklep_index; ?>][produkty][<?php echo $produkt_index; ?>][name]"
-                                           value="<?php echo htmlspecialchars($produkt['name']); ?>"
-                                           placeholder="Nazwa produktu"
-                                           required>
-                                    <input type="text" 
-                                           name="sklepy[<?php echo $sklep_index; ?>][produkty][<?php echo $produkt_index; ?>][unit]"
-                                           value="<?php echo htmlspecialchars($produkt['unit']); ?>"
-                                           placeholder="Jednostka"
-                                           required>
-                                    <button type="button" class="btn-usun" onclick="usunProdukt(this)">🗑️</button>
+                            <?php if (empty($produkty)): ?>
+                                <div class="pusty-sklep-info">
+                                    Brak produktów. Dodaj pierwszy produkt poniżej.
                                 </div>
-                                <?php $produkt_index++; ?>
-                            <?php endforeach; ?>
+                            <?php else: ?>
+                                <?php $produkt_index = 0; ?>
+                                <?php foreach ($produkty as $produkt): ?>
+                                    <div class="produkt-edytor" draggable="true">
+                                        <span class="produkt-drag-handle" title="Przeciągnij, aby zmienić kolejność">☰</span>
+                                        <input type="text" 
+                                               name="sklepy[<?php echo $sklep_index; ?>][produkty][<?php echo $produkt_index; ?>][name]"
+                                               value="<?php echo htmlspecialchars($produkt['name']); ?>"
+                                               placeholder="Nazwa produktu"
+                                               required
+                                               aria-label="Nazwa produktu">
+                                        <input type="text" 
+                                               name="sklepy[<?php echo $sklep_index; ?>][produkty][<?php echo $produkt_index; ?>][unit]"
+                                               value="<?php echo htmlspecialchars($produkt['unit']); ?>"
+                                               placeholder="np. kg, szt, l"
+                                               required
+                                               aria-label="Jednostka">
+                                        <button type="button" class="btn-usun" onclick="usunProdukt(this)" title="Usuń produkt">🗑️</button>
+                                    </div>
+                                    <?php $produkt_index++; ?>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
                         </div>
                         
                         <button type="button" class="btn-dodaj" onclick="dodajProdukt(this)">
@@ -582,7 +807,7 @@ if (!is_array($produkty_sklepy)) {
     <script>
         let sklepCounter = <?php echo $sklep_index; ?>;
         let draggedElement = null;
-        let draggedType = null; // 'sklep' lub 'produkt'
+        let draggedType = null;
 
         // ========================================
         // DRAG AND DROP - SKLEPY
@@ -732,6 +957,17 @@ if (!is_array($produkty_sklepy)) {
                 inputy[0].name = `sklepy[${sklepIndex}][produkty][${pIndex}][name]`;
                 inputy[1].name = `sklepy[${sklepIndex}][produkty][${pIndex}][unit]`;
             });
+            
+            // Aktualizuj licznik produktów
+            aktualizujLicznikProduktow(sklepDiv);
+        }
+
+        function aktualizujLicznikProduktow(sklepDiv) {
+            const licznik = sklepDiv.querySelector('.liczba-produktow');
+            const iloscProduktow = sklepDiv.querySelectorAll('.produkt-edytor').length;
+            if (licznik) {
+                licznik.textContent = iloscProduktow;
+            }
         }
 
         // ========================================
@@ -745,28 +981,34 @@ if (!is_array($produkty_sklepy)) {
             const sklepHTML = `
                 <div class="sklep-edytor" data-sklep-index="${nowyIndex}" draggable="true">
                     <div class="sklep-naglowek">
-                        <span class="sklep-naglowek-drag">☰</span>
+                        <span class="sklep-naglowek-drag" title="Przeciągnij, aby zmienić kolejność">☰</span>
                         <input type="text" 
                                name="sklepy[${nowyIndex}][nazwa]" 
                                placeholder="Nazwa sklepu"
-                               required>
-                        <button type="button" class="btn-usun" onclick="usunSklep(this)">
+                               required
+                               aria-label="Nazwa sklepu">
+                        <span class="licznik-produktow">
+                            📦 <span class="liczba-produktow">1</span>
+                        </span>
+                        <button type="button" class="btn-usun" onclick="usunSklep(this)" title="Usuń sklep">
                             🗑️ Usuń sklep
                         </button>
                     </div>
                     
                     <div class="produkty-kontener">
                         <div class="produkt-edytor" draggable="true">
-                            <span class="produkt-drag-handle">☰</span>
+                            <span class="produkt-drag-handle" title="Przeciągnij, aby zmienić kolejność">☰</span>
                             <input type="text" 
                                    name="sklepy[${nowyIndex}][produkty][0][name]"
                                    placeholder="Nazwa produktu"
-                                   required>
+                                   required
+                                   aria-label="Nazwa produktu">
                             <input type="text" 
                                    name="sklepy[${nowyIndex}][produkty][0][unit]"
-                                   placeholder="Jednostka"
-                                   required>
-                            <button type="button" class="btn-usun" onclick="usunProdukt(this)">🗑️</button>
+                                   placeholder="np. kg, szt, l"
+                                   required
+                                   aria-label="Jednostka">
+                            <button type="button" class="btn-usun" onclick="usunProdukt(this)" title="Usuń produkt">🗑️</button>
                         </div>
                     </div>
                     
@@ -780,32 +1022,55 @@ if (!is_array($produkty_sklepy)) {
             setupSklepDragAndDrop();
             setupProduktDragAndDrop();
             formZmieniony = true;
+            
+            // Scroll do nowego sklepu
+            setTimeout(() => {
+                const nowyElement = kontener.lastElementChild;
+                nowyElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                nowyElement.querySelector('input').focus();
+            }, 100);
         }
 
         function dodajProdukt(button) {
             const sklepDiv = button.closest('.sklep-edytor');
             const sklepIndex = sklepDiv.dataset.sklepIndex;
             const produktyKontener = sklepDiv.querySelector('.produkty-kontener');
+            
+            // Usuń info o pustym sklepie jeśli istnieje
+            const pustyInfo = produktyKontener.querySelector('.pusty-sklep-info');
+            if (pustyInfo) {
+                pustyInfo.remove();
+            }
+            
             const aktualnaIlosc = produktyKontener.querySelectorAll('.produkt-edytor').length;
             
             const produktHTML = `
                 <div class="produkt-edytor" draggable="true">
-                    <span class="produkt-drag-handle">☰</span>
+                    <span class="produkt-drag-handle" title="Przeciągnij, aby zmienić kolejność">☰</span>
                     <input type="text" 
                            name="sklepy[${sklepIndex}][produkty][${aktualnaIlosc}][name]"
                            placeholder="Nazwa produktu"
-                           required>
+                           required
+                           aria-label="Nazwa produktu">
                     <input type="text" 
                            name="sklepy[${sklepIndex}][produkty][${aktualnaIlosc}][unit]"
-                           placeholder="Jednostka"
-                           required>
-                    <button type="button" class="btn-usun" onclick="usunProdukt(this)">🗑️</button>
+                           placeholder="np. kg, szt, l"
+                           required
+                           aria-label="Jednostka">
+                    <button type="button" class="btn-usun" onclick="usunProdukt(this)" title="Usuń produkt">🗑️</button>
                 </div>
             `;
             
             produktyKontener.insertAdjacentHTML('beforeend', produktHTML);
             setupProduktDragAndDrop();
+            aktualizujLicznikProduktow(sklepDiv);
             formZmieniony = true;
+            
+            // Focus na nowym produkcie
+            setTimeout(() => {
+                const nowyProdukt = produktyKontener.lastElementChild;
+                nowyProdukt.querySelector('input').focus();
+            }, 100);
         }
 
         function usunProdukt(button) {
@@ -813,9 +1078,17 @@ if (!is_array($produkty_sklepy)) {
                 const produktDiv = button.closest('.produkt-edytor');
                 const sklepDiv = produktDiv.closest('.sklep-edytor');
                 const sklepIndex = sklepDiv.dataset.sklepIndex;
+                const produktyKontener = sklepDiv.querySelector('.produkty-kontener');
                 
                 produktDiv.remove();
                 aktualizujIndeksyProduktow(sklepDiv, sklepIndex);
+                
+                // Pokaż info o pustym sklepie jeśli to był ostatni produkt
+                if (produktyKontener.querySelectorAll('.produkt-edytor').length === 0) {
+                    produktyKontener.innerHTML = '<div class="pusty-sklep-info">Brak produktów. Dodaj pierwszy produkt poniżej.</div>';
+                    aktualizujLicznikProduktow(sklepDiv);
+                }
+                
                 formZmieniony = true;
             }
         }
@@ -833,28 +1106,30 @@ if (!is_array($produkty_sklepy)) {
         // ========================================
 
         let plywajacyPrzyciskElement = null;
+        let lastScrollTop = 0;
 
         function pokazPrzycisk() {
             if (!plywajacyPrzyciskElement) return;
             
-            const scrollPos = window.scrollY;
+            const scrollPos = window.scrollY || document.documentElement.scrollTop;
             
-            if (scrollPos > 200) {
+            // Pokaż przycisk gdy scroll > 200px i scrollujemy w dół
+            if (scrollPos > 200 && scrollPos > lastScrollTop) {
                 plywajacyPrzyciskElement.style.display = 'block';
-            } else {
+            } else if (scrollPos < 100) {
                 plywajacyPrzyciskElement.style.display = 'none';
             }
+            
+            lastScrollTop = scrollPos <= 0 ? 0 : scrollPos;
         }
 
         function submitFormZPlywajecgo() {
-            // Symuluj kliknięcie normalnego przycisku zapisz
             const formEdycja = document.getElementById('formEdycja');
             const przyciskZapisz = formEdycja.querySelector('button[name="zapisz"]');
             
             if (przyciskZapisz) {
                 przyciskZapisz.click();
             } else {
-                // Fallback - dodaj ukryte pole i submituj
                 const hiddenInput = document.createElement('input');
                 hiddenInput.type = 'hidden';
                 hiddenInput.name = 'zapisz';
@@ -879,14 +1154,12 @@ if (!is_array($produkty_sklepy)) {
             plywajacyPrzyciskElement = document.getElementById('plywajacyPrzycisk');
             
             if (plywajacyPrzyciskElement) {
-                // Sprawdzaj przy scrollowaniu
                 let scrollTimeout;
                 window.addEventListener('scroll', () => {
                     if (scrollTimeout) clearTimeout(scrollTimeout);
                     scrollTimeout = setTimeout(pokazPrzycisk, 50);
                 });
 
-                // Sprawdź od razu przy załadowaniu
                 pokazPrzycisk();
             }
 
@@ -895,6 +1168,10 @@ if (!is_array($produkty_sklepy)) {
             
             if (formEdycja) {
                 formEdycja.addEventListener('change', () => {
+                    formZmieniony = true;
+                });
+
+                formEdycja.addEventListener('input', () => {
                     formZmieniony = true;
                 });
 
@@ -907,20 +1184,35 @@ if (!is_array($produkty_sklepy)) {
             window.addEventListener('beforeunload', (e) => {
                 if (formZmieniony) {
                     e.preventDefault();
-                    e.returnValue = '';
+                    e.returnValue = 'Masz niezapisane zmiany. Czy na pewno chcesz opuścić stronę?';
                 }
             });
+
+            // Aktualizuj liczniki przy załadowaniu
+            document.querySelectorAll('.sklep-edytor').forEach(sklep => {
+                aktualizujLicznikProduktow(sklep);
+            });
+        });
+
+        // ========================================
+        // SKRÓTY KLAWISZOWE
+        // ========================================
+
+        document.addEventListener('keydown', (e) => {
+            // Ctrl/Cmd + S = Zapisz
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                submitFormZPlywajecgo();
+            }
         });
     </script>
 	
     <!-- Pływający przycisk zapisz -->
     <div id="plywajacyPrzycisk" class="plywajacy-zapisz" style="display: none;">
-        <button type="button" onclick="submitFormZPlywajecgo()" class="btn-plywajacy-zapisz">
+        <button type="button" onclick="submitFormZPlywajecgo()" class="btn-plywajacy-zapisz" title="Zapisz zmiany (Ctrl+S)">
             💾 Zapisz zmiany
         </button>
     </div>
-
-</body>
 
 </body>
 </html>

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" width="1000" height="1000"><g clip-path="url(#SvgjsClipPath1157)"><rect width="1000" height="1000" fill="#ffffff"></rect><g transform="matrix(15.625,0,0,15.625,0,0)"><svg xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" width="64" height="64"><svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title">
+  <title id="title">Shopicker – favicon</title>
+
+  <!-- Tło (przezroczyste, więc nie rysujemy) -->
+
+  <!-- Symbol – kropla z koszykiem, wyśrodkowany -->
+  <g transform="translate(32,32)">
+    <!-- Kropla -->
+    <path d="M0 -28
+             C10 -28 18 -20 18 -10
+             C18 2 0 28 0 28
+             C0 28 -18 2 -18 -10
+             C-18 -20 -10 -28 0 -28Z" fill="#2E7D32"></path>
+    <!-- Koszyk (biały) -->
+    <path d="M-9 -4 L9 -4 L11 4 L-11 4 Z
+             M-11 4 L-13 10 L13 10 L11 4 Z" fill="#FFFFFF"></path>
+  </g>
+</svg></svg></g></g><defs><clipPath id="SvgjsClipPath1157"><rect width="1000" height="1000" x="0" y="0" rx="500" ry="500"></rect></clipPath></defs></svg>
