@@ -1,0 +1,92 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');
+body { font-family: sans-serif; max-width: 800px; margin: 20px auto; padding: 0 10px; line-height: 1.4; }
+.montserrat-logo {
+  font-family: "Montserrat", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 600;
+  font-style: normal;
+}
+/* Przycisk edycji */
+.przycisk-edytuj { background-color: #2196F3 !important; }
+.przycisk-edytuj:hover { background-color: #1976D2 !important; }
+
+.naglowek-kontener { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+.przycisk-naglowek { padding: 8px 12px; color: white; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; display: inline-block; }
+.przycisk-odswiez { background-color: #007bff; }
+.przycisk-ukryj { background-color: #5d6a7a; }
+.przycisk-odswiez:hover { background-color: #0056b3; }
+.przycisk-ukryj:hover { background-color: #434d58; }
+
+.sklep-sekcja { margin-bottom: 30px; border: 1px solid #ccc; padding: 15px; border-radius: 5px; }
+.sklep-nazwa { font-size: 1.5em; margin-top: 0; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+.lista { list-style-type: none; padding: 0; }
+.lista li { 
+    padding: 10px; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; 
+    transition: opacity 0.3s ease, background-color 0.3s ease, max-height 0.3s ease;
+    overflow: hidden;
+    max-height: 100px;
+}
+
+.ukryty {
+    opacity: 0 !important;
+    max-height: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    border-bottom: none !important;
+    visibility: hidden !important;
+}
+
+.status-have { 
+    background-color: #ccffcc; 
+    opacity: 0.85; 
+    text-decoration: none; 
+}
+
+.ilosc-tekst {
+    font-style: italic;
+}
+
+.status-need { 
+    background-color: #ffcccc; 
+	font-weight: bold; 
+    text-decoration: none;
+} 
+
+.formularz-ilosc { 
+    display: flex; 
+    align-items: center; 
+    justify-content: flex-end;
+    width: 100%;
+    max-width: 250px;
+}
+
+.wejscie-ilosc { 
+    width: 50px; 
+    padding: 5px; 
+    text-align: right;
+    margin-left: auto;
+} 
+
+.jednostka-miary { 
+    font-size: 0.9em; 
+    color: #555; 
+    margin-left: 5px; 
+    min-width: 4ch; 
+    text-align: left;
+    margin-right: 3px;
+}
+.przycisk { padding: 6px 10px; margin-left: 5px; cursor: pointer; border-radius: 4px; border: none; }
+.przycisk-mam { background-color: #28a745; color: white; }
+.przycisk-zmien { background-color: #007bff; color: white; } 
+
+/* --- STYL DLA MAŁYCH EKRANÓW (Mobile RWD) --- */
+@media screen and (max-width: 600px) {
+    label { white-space: nowrap; font-size: larger; }
+	.lista li { flex-direction: column; align-items: flex-start; gap: 10px; }
+    .formularz-ilosc { justify-content: flex-end; max-width: 100%; }
+	.status-need { font-size: larger; } 
+	.przycisk-mam { font-size: large;
+}
+}
