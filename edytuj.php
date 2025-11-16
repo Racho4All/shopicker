@@ -141,8 +141,11 @@ if (!is_array($produkty_sklepy)) {
             --primary-hover: #45a049;
             --secondary-color: #2196F3;
             --secondary-hover: #1976D2;
-            --danger-color: #f44336;
-            --danger-hover: #d32f2f;
+            --danger-color: #FF6B6B;
+            --danger-hover: #EE5A52;
+            --danger-bg: #FFE5E5;
+            --warning-color: #FF9800;
+            --warning-bg: #FFF3E0;
             --border-color: #ddd;
             --bg-light: #f9f9f9;
             --bg-lighter: #fafafa;
@@ -167,24 +170,131 @@ if (!is_array($produkty_sklepy)) {
         }
         
         /* ========================================
-           SKLEPY
+           TOOLBAR - FILTR I AKCJE
+           ======================================== */
+        
+        .toolbar {
+            background: white;
+            border-radius: var(--radius);
+            padding: 16px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .search-box {
+            flex: 1;
+            min-width: 200px;
+            position: relative;
+        }
+        
+        .search-box input {
+            width: 100%;
+            padding: 12px 44px 12px 44px;
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius);
+            font-size: 1em;
+            transition: var(--transition);
+        }
+        
+        .search-box input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+        }
+        
+        .search-icon {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 1.2em;
+            color: #999;
+            pointer-events: none;
+        }
+        
+        .search-clear {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #ddd;
+            color: #666;
+            border: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 0.9em;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+            padding: 0;
+            line-height: 1;
+        }
+        
+        .search-clear:hover {
+            background: #ccc;
+            color: #333;
+        }
+        
+        .search-clear.visible {
+            display: flex;
+        }
+        
+        .toolbar-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        
+        .btn-toolbar {
+            padding: 10px 16px;
+            background: var(--secondary-color);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.95em;
+            font-weight: 500;
+            transition: var(--transition);
+            white-space: nowrap;
+        }
+        
+        .btn-toolbar:hover {
+            background: var(--secondary-hover);
+        }
+        
+        .btn-toolbar.active {
+            background: var(--primary-color);
+        }
+        
+        /* ========================================
+           SKLEPY - SKŁADANE
            ======================================== */
         
         .sklep-edytor {
             background: white;
             border: 2px solid var(--border-color);
             border-radius: var(--radius);
-            padding: 20px;
-            margin-bottom: 24px;
-            cursor: move;
+            margin-bottom: 12px;
             transition: var(--transition);
             box-shadow: var(--shadow);
-            position: relative;
+        }
+        
+        .sklep-edytor.hidden {
+            display: none;
         }
         
         .sklep-edytor:hover {
             box-shadow: var(--shadow-hover);
-            transform: translateY(-2px);
         }
         
         .sklep-edytor.dragging {
@@ -199,71 +309,146 @@ if (!is_array($produkty_sklepy)) {
             border-style: dashed;
         }
         
+        .sklep-edytor.collapsed .sklep-zawartość {
+            display: none;
+        }
+        
+        .sklep-edytor.collapsed .sklep-naglowek {
+            border-bottom: none;
+        }
+        
         .sklep-naglowek {
             display: flex;
             align-items: center;
-            gap: 12px;
-            margin-bottom: 20px;
+            gap: 8px;
+            padding: 12px 16px;
+            border-bottom: 2px solid var(--bg-light);
+            background: var(--bg-lighter);
+            border-radius: var(--radius) var(--radius) 0 0;
+            cursor: pointer;
+            user-select: none;
+        }
+        
+        .sklep-edytor.collapsed .sklep-naglowek {
+            border-radius: var(--radius);
+        }
+        
+        .toggle-icon {
+            font-size: 1.2em;
+            color: #666;
+            transition: transform 0.3s ease;
+            cursor: pointer;
+            padding: 4px;
+        }
+        
+        .sklep-edytor.collapsed .toggle-icon {
+            transform: rotate(-90deg);
         }
         
         .sklep-naglowek-drag {
             cursor: grab;
-            font-size: 1.5em;
+            font-size: 1.3em;
             color: #999;
-            padding: 8px;
-            user-select: none;
+            padding: 4px 8px;
             transition: var(--transition);
             border-radius: 4px;
         }
         
         .sklep-naglowek-drag:hover {
             color: var(--primary-color);
-            background: var(--bg-light);
+            background: white;
         }
         
         .sklep-naglowek-drag:active {
             cursor: grabbing;
-            color: var(--primary-hover);
         }
         
         .sklep-naglowek input {
             flex: 1;
-            font-size: 1.2em;
+            font-size: 1.1em;
             font-weight: 600;
-            padding: 12px 16px;
-            border: 2px solid var(--border-color);
-            border-radius: var(--radius);
+            padding: 8px 12px;
+            border: 2px solid transparent;
+            border-radius: 6px;
             transition: var(--transition);
-            background: var(--bg-lighter);
+            background: white;
+            min-width: 150px;
         }
         
         .sklep-naglowek input:focus {
             outline: none;
             border-color: var(--primary-color);
-            background: white;
             box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
         }
         
+        .licznik-produktow {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            color: #666;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        
+        .sklep-akcje {
+            display: flex;
+            gap: 6px;
+        }
+        
+        .btn-usun-sklep {
+            background: var(--danger-bg);
+            color: var(--danger-color);
+            border: 1px solid var(--danger-color);
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9em;
+            font-weight: 500;
+            transition: var(--transition);
+            white-space: nowrap;
+        }
+        
+        .btn-usun-sklep:hover {
+            background: var(--danger-color);
+            color: white;
+            box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
+        }
+        
         /* ========================================
-           PRODUKTY
+           ZAWARTOŚĆ SKLEPU
            ======================================== */
+        
+        .sklep-zawartość {
+            padding: 16px;
+        }
+        
+        .dodaj-produkt-gora {
+            background: var(--bg-lighter);
+            border-radius: var(--radius);
+            padding: 12px;
+            margin-bottom: 12px;
+        }
         
         .produkty-kontener {
             background: var(--bg-lighter);
             border-radius: var(--radius);
-            padding: 16px;
-            margin-bottom: 16px;
+            padding: 12px;
+            margin-bottom: 12px;
         }
         
         .produkt-edytor {
             display: grid;
             grid-template-columns: auto 1fr 120px auto;
-            gap: 10px;
-            margin-bottom: 12px;
+            gap: 8px;
+            margin-bottom: 10px;
             align-items: center;
             background: white;
-            padding: 12px;
-            border-radius: var(--radius);
+            padding: 10px;
+            border-radius: 6px;
             border: 1px solid var(--border-color);
             transition: var(--transition);
         }
@@ -281,11 +466,16 @@ if (!is_array($produkty_sklepy)) {
             box-shadow: 0 4px 12px rgba(76, 175, 80, 0.2);
         }
         
+        .produkt-edytor.duplicate-warning {
+            border-color: var(--warning-color);
+            background: var(--warning-bg);
+        }
+        
         .produkt-drag-handle {
             cursor: grab;
-            font-size: 1.2em;
+            font-size: 1.1em;
             color: #bbb;
-            padding: 4px 8px;
+            padding: 4px 6px;
             user-select: none;
             transition: var(--transition);
             border-radius: 4px;
@@ -301,9 +491,9 @@ if (!is_array($produkty_sklepy)) {
         }
         
         .produkt-edytor input[type="text"] {
-            padding: 10px 12px;
+            padding: 8px 10px;
             border: 1px solid var(--border-color);
-            border-radius: 6px;
+            border-radius: 4px;
             width: 100%;
             font-size: 0.95em;
             transition: var(--transition);
@@ -315,55 +505,35 @@ if (!is_array($produkty_sklepy)) {
             box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
         }
         
-        /* ========================================
-           PRZYCISKI
-           ======================================== */
-        
-        .btn-base {
-            border: none;
-            padding: 10px 20px;
-            border-radius: 6px;
+        .btn-usun-produkt {
+            background: var(--danger-bg);
+            color: var(--danger-color);
+            border: 1px solid var(--danger-color);
+            padding: 8px 12px;
+            border-radius: 4px;
             cursor: pointer;
-            font-size: 1em;
+            font-size: 0.9em;
             font-weight: 500;
             transition: var(--transition);
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            text-decoration: none;
-            white-space: nowrap;
         }
         
-        .btn-base:active {
-            transform: scale(0.98);
-        }
-        
-        .btn-usun {
+        .btn-usun-produkt:hover {
             background: var(--danger-color);
             color: white;
-            padding: 8px 16px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: var(--transition);
-            font-size: 0.9em;
-        }
-        
-        .btn-usun:hover {
-            background: var(--danger-hover);
-            box-shadow: 0 2px 8px rgba(244, 67, 54, 0.3);
+            box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
         }
         
         .btn-dodaj {
             background: var(--primary-color);
             color: white;
             width: 100%;
-            padding: 12px;
+            padding: 10px;
             border: none;
             border-radius: 6px;
             cursor: pointer;
             font-weight: 500;
             transition: var(--transition);
+            font-size: 0.95em;
         }
         
         .btn-dodaj:hover {
@@ -371,16 +541,51 @@ if (!is_array($produkty_sklepy)) {
             box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
         }
         
+        .pusty-sklep-info {
+            text-align: center;
+            padding: 24px;
+            background: white;
+            border-radius: var(--radius);
+            color: #999;
+            font-style: italic;
+        }
+        
+        /* ========================================
+           OSTRZEŻENIE O DUPLIKACIE
+           ======================================== */
+        
+        .duplicate-badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: var(--warning-color);
+            color: white;
+            font-size: 0.75em;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-weight: 600;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            z-index: 10;
+        }
+        
+        .produkt-edytor {
+            position: relative;
+        }
+        
+        /* ========================================
+           PRZYCISKI GŁÓWNE
+           ======================================== */
+        
         .btn-dodaj-sklep {
             background: var(--secondary-color);
             color: white;
             border: none;
-            padding: 16px 24px;
+            padding: 14px 24px;
             border-radius: var(--radius);
             cursor: pointer;
-            font-size: 1.1em;
+            font-size: 1.05em;
             font-weight: 600;
-            margin: 24px 0;
+            margin: 20px 0;
             width: 100%;
             transition: var(--transition);
         }
@@ -538,32 +743,28 @@ if (!is_array($produkty_sklepy)) {
         }
         
         /* ========================================
-           WSKAŹNIK LICZBY PRODUKTÓW
+           INFO O BRAKU WYNIKÓW
            ======================================== */
         
-        .licznik-produktow {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            background: var(--bg-light);
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 0.9em;
-            color: #666;
-            font-weight: 500;
+        .brak-wynikow {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
         }
         
-        /* ========================================
-           PUSTY SKLEP
-           ======================================== */
+        .brak-wynikow-icon {
+            font-size: 4em;
+            margin-bottom: 16px;
+        }
         
-        .pusty-sklep-info {
-            text-align: center;
-            padding: 30px;
-            background: var(--bg-lighter);
-            border-radius: var(--radius);
-            color: #999;
-            font-style: italic;
+        .brak-wynikow h3 {
+            margin: 0 0 8px 0;
+            color: #666;
+        }
+        
+        .brak-wynikow p {
+            margin: 0;
+            font-size: 0.95em;
         }
         
         /* ========================================
@@ -576,29 +777,79 @@ if (!is_array($produkty_sklepy)) {
                 margin: 12px auto;
             }
             
-            .sklep-edytor {
-                padding: 16px;
-                margin-bottom: 16px;
+            .toolbar {
+                position: relative;
+                padding: 14px;
+                font-size: 1.05em;
+            }
+            
+            .search-box {
+                width: 100%;
+                min-width: auto;
+            }
+            
+            .search-box input {
+                font-size: 1.05em;
+                padding: 14px 44px 14px 46px;
+            }
+            
+            .search-icon {
+                font-size: 1.3em;
+            }
+            
+            .search-clear {
+                width: 28px;
+                height: 28px;
+                font-size: 1em;
+            }
+            
+            .toolbar-actions {
+                width: 100%;
+            }
+            
+            .btn-toolbar {
+                flex: 1;
+                padding: 12px 16px;
+                font-size: 1em;
             }
             
             .sklep-naglowek {
                 flex-wrap: wrap;
+                padding: 12px 14px;
             }
             
-            .sklep-naglowek input {
-                font-size: 1.1em;
-                width: 100%;
-                order: 2;
+            .toggle-icon {
+                font-size: 1.4em;
             }
             
             .sklep-naglowek-drag {
-                order: 1;
+                font-size: 1.5em;
             }
             
-            .btn-usun {
+            .sklep-naglowek input {
                 order: 3;
                 width: 100%;
+                margin-top: 10px;
+                font-size: 1.15em;
+                padding: 10px 14px;
+            }
+            
+            .licznik-produktow {
+                order: 2;
+                font-size: 1em;
+                padding: 7px 14px;
+            }
+            
+            .sklep-akcje {
+                order: 4;
+                width: 100%;
+                margin-top: 10px;
+            }
+            
+            .btn-usun-sklep {
+                flex: 1;
                 padding: 12px;
+                font-size: 1.05em;
             }
             
             .produkty-kontener {
@@ -607,12 +858,18 @@ if (!is_array($produkty_sklepy)) {
             
             .produkt-edytor {
                 grid-template-columns: auto 1fr;
-                gap: 8px;
-                padding: 10px;
+                gap: 10px;
+                padding: 12px;
             }
             
             .produkt-drag-handle {
                 grid-row: 1 / 4;
+                font-size: 1.3em;
+            }
+            
+            .produkt-edytor input[type="text"] {
+                font-size: 1.05em;
+                padding: 10px 12px;
             }
             
             .produkt-edytor input[type="text"]:nth-of-type(1) {
@@ -623,9 +880,21 @@ if (!is_array($produkty_sklepy)) {
                 grid-column: 2;
             }
             
-            .produkt-edytor .btn-usun {
+            .btn-usun-produkt {
                 grid-column: 1 / 3;
                 width: 100%;
+                padding: 10px;
+                font-size: 1.05em;
+            }
+            
+            .btn-dodaj {
+                padding: 12px;
+                font-size: 1.05em;
+            }
+            
+            .btn-dodaj-sklep {
+                padding: 16px 24px;
+                font-size: 1.1em;
             }
             
             .przyciski-akcji {
@@ -635,6 +904,8 @@ if (!is_array($produkty_sklepy)) {
             .btn-zapisz,
             .btn-anuluj {
                 width: 100%;
+                padding: 18px 32px;
+                font-size: 1.15em;
             }
             
             .plywajacy-zapisz {
@@ -646,52 +917,38 @@ if (!is_array($produkty_sklepy)) {
             .btn-plywajacy-zapisz {
                 width: 100%;
                 justify-content: center;
-                padding: 18px 20px;
-                font-size: 1.15em;
+                padding: 20px 24px;
+                font-size: 1.2em;
+            }
+            
+            .pusty-sklep-info {
+                font-size: 1.05em;
+                padding: 28px;
+            }
+            
+            .brak-wynikow h3 {
+                font-size: 1.2em;
+            }
+            
+            .brak-wynikow p {
+                font-size: 1.05em;
             }
         }
         
         @media (max-width: 480px) {
             .sklep-naglowek input {
-                font-size: 1em;
+                font-size: 1.1em;
                 padding: 10px 12px;
             }
             
             .produkt-edytor input[type="text"] {
-                font-size: 0.9em;
-                padding: 8px 10px;
-            }
-            
-            .sklep-naglowek-drag {
-                font-size: 1.3em;
+                font-size: 1em;
+                padding: 9px 11px;
             }
             
             .btn-plywajacy-zapisz {
-                padding: 16px 18px;
-                font-size: 1.1em;
-            }
-        }
-        
-        /* ========================================
-           ANIMACJE HOVER
-           ======================================== */
-        
-        @media (hover: hover) {
-            .sklep-edytor::before {
-                content: '';
-                position: absolute;
-                top: 0;
-                left: 0;
-                right: 0;
-                height: 4px;
-                background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
-                border-radius: var(--radius) var(--radius) 0 0;
-                opacity: 0;
-                transition: opacity 0.3s ease;
-            }
-            
-            .sklep-edytor:hover::before {
-                opacity: 1;
+                padding: 18px 22px;
+                font-size: 1.15em;
             }
         }
         
@@ -733,64 +990,104 @@ if (!is_array($produkty_sklepy)) {
                     </div>
                 <?php endif; ?>
             </div>
-        <?php endif; ?>		
+        <?php endif; ?>
+
+        <!-- TOOLBAR Z WYSZUKIWANIEM I AKCJAMI -->
+        <div class="toolbar">
+            <div class="search-box">
+                <span class="search-icon">🔍</span>
+                <input type="text" 
+                       id="searchInput" 
+                       placeholder="Szukaj sklepu lub produktu..."
+                       autocomplete="off">
+                <button type="button" class="search-clear" id="searchClear" title="Wyczyść wyszukiwanie">✕</button>
+            </div>
+            <div class="toolbar-actions">
+                <button type="button" class="btn-toolbar" id="btnRozwinWszystkie" title="Rozwiń wszystkie sklepy">
+                    📂 Rozwiń
+                </button>
+                <button type="button" class="btn-toolbar" id="btnZwinWszystkie" title="Zwiń wszystkie sklepy">
+                    📁 Zwiń
+                </button>
+            </div>
+        </div>
 
         <form method="POST" id="formEdycja">
             <div id="kontenerSklepy">
                 <?php $sklep_index = 0; ?>
                 <?php foreach ($produkty_sklepy as $sklep_nazwa => $produkty): ?>
                     <div class="sklep-edytor" data-sklep-index="<?php echo $sklep_index; ?>" draggable="true">
-                        <div class="sklep-naglowek">
-                            <span class="sklep-naglowek-drag" title="Przeciągnij, aby zmienić kolejność">☰</span>
+                        <div class="sklep-naglowek" onclick="toggleSklep(this)">
+                            <span class="toggle-icon">▼</span>
+                            <span class="sklep-naglowek-drag" 
+                                  draggable="true"
+                                  onclick="event.stopPropagation()"
+                                  title="Przeciągnij, aby zmienić kolejność">☰</span>
                             <input type="text" 
                                    name="sklepy[<?php echo $sklep_index; ?>][nazwa]" 
                                    value="<?php echo htmlspecialchars($sklep_nazwa); ?>"
                                    placeholder="Nazwa sklepu"
                                    required
+                                   onclick="event.stopPropagation()"
                                    aria-label="Nazwa sklepu">
                             <span class="licznik-produktow">
                                 📦 <span class="liczba-produktow"><?php echo count($produkty); ?></span>
                             </span>
-                            <button type="button" class="btn-usun" onclick="usunSklep(this)" title="Usuń sklep">
-                                🗑️ Usuń sklep
-                            </button>
+                            <div class="sklep-akcje" onclick="event.stopPropagation()">
+                                <button type="button" class="btn-usun-sklep" onclick="usunSklep(this)" title="Usuń sklep">
+                                    🗑️ Usuń
+                                </button>
+                            </div>
                         </div>
                         
-                        <div class="produkty-kontener">
-                            <?php if (empty($produkty)): ?>
-                                <div class="pusty-sklep-info">
-                                    Brak produktów. Dodaj pierwszy produkt poniżej.
-                                </div>
-                            <?php else: ?>
-                                <?php $produkt_index = 0; ?>
-                                <?php foreach ($produkty as $produkt): ?>
-                                    <div class="produkt-edytor" draggable="true">
-                                        <span class="produkt-drag-handle" title="Przeciągnij, aby zmienić kolejność">☰</span>
-                                        <input type="text" 
-                                               name="sklepy[<?php echo $sklep_index; ?>][produkty][<?php echo $produkt_index; ?>][name]"
-                                               value="<?php echo htmlspecialchars($produkt['name']); ?>"
-                                               placeholder="Nazwa produktu"
-                                               required
-                                               aria-label="Nazwa produktu">
-                                        <input type="text" 
-                                               name="sklepy[<?php echo $sklep_index; ?>][produkty][<?php echo $produkt_index; ?>][unit]"
-                                               value="<?php echo htmlspecialchars($produkt['unit']); ?>"
-                                               placeholder="np. kg, szt, l"
-                                               required
-                                               aria-label="Jednostka">
-                                        <button type="button" class="btn-usun" onclick="usunProdukt(this)" title="Usuń produkt">🗑️</button>
+                        <div class="sklep-zawartość">
+                            <!-- DODAJ PRODUKT NA GÓRZE -->
+                            <div class="dodaj-produkt-gora">
+                                <button type="button" class="btn-dodaj" onclick="dodajProdukt(this, true)">
+                                    ➕ Dodaj produkt
+                                </button>
+                            </div>
+                            
+                            <div class="produkty-kontener">
+                                <?php if (empty($produkty)): ?>
+                                    <div class="pusty-sklep-info">
+                                        Brak produktów. Dodaj pierwszy produkt powyżej.
                                     </div>
-                                    <?php $produkt_index++; ?>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
+                                <?php else: ?>
+                                    <?php $produkt_index = 0; ?>
+                                    <?php foreach ($produkty as $produkt): ?>
+                                        <div class="produkt-edytor" draggable="true">
+                                            <span class="produkt-drag-handle" title="Przeciągnij, aby zmienić kolejność">☰</span>
+                                            <input type="text" 
+                                                   name="sklepy[<?php echo $sklep_index; ?>][produkty][<?php echo $produkt_index; ?>][name]"
+                                                   value="<?php echo htmlspecialchars($produkt['name']); ?>"
+                                                   placeholder="Nazwa produktu"
+                                                   required
+                                                   oninput="checkDuplicates(this)"
+                                                   aria-label="Nazwa produktu">
+                                            <input type="text" 
+                                                   name="sklepy[<?php echo $sklep_index; ?>][produkty][<?php echo $produkt_index; ?>][unit]"
+                                                   value="<?php echo htmlspecialchars($produkt['unit']); ?>"
+                                                   placeholder="np. kg, szt, l"
+                                                   required
+                                                   aria-label="Jednostka">
+                                            <button type="button" class="btn-usun-produkt" onclick="usunProdukt(this)" title="Usuń produkt">🗑️</button>
+                                        </div>
+                                        <?php $produkt_index++; ?>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </div>
                         </div>
-                        
-                        <button type="button" class="btn-dodaj" onclick="dodajProdukt(this)">
-                            ➕ Dodaj produkt
-                        </button>
                     </div>
                     <?php $sklep_index++; ?>
                 <?php endforeach; ?>
+            </div>
+
+            <!-- Info o braku wyników wyszukiwania -->
+            <div id="brakWynikow" class="brak-wynikow" style="display: none;">
+                <div class="brak-wynikow-icon">🔍</div>
+                <h3>Nie znaleziono wyników</h3>
+                <p>Spróbuj użyć innych słów kluczowych</p>
             </div>
 
             <button type="button" class="btn-dodaj-sklep" onclick="dodajSklep()">
@@ -808,6 +1105,221 @@ if (!is_array($produkty_sklepy)) {
         let sklepCounter = <?php echo $sklep_index; ?>;
         let draggedElement = null;
         let draggedType = null;
+
+        // ========================================
+        // FUZZY DUPLICATE DETECTION
+        // ========================================
+
+        function levenshteinDistance(str1, str2) {
+            const m = str1.length;
+            const n = str2.length;
+            const dp = Array(m + 1).fill(null).map(() => Array(n + 1).fill(0));
+
+            for (let i = 0; i <= m; i++) dp[i][0] = i;
+            for (let j = 0; j <= n; j++) dp[0][j] = j;
+
+            for (let i = 1; i <= m; i++) {
+                for (let j = 1; j <= n; j++) {
+                    if (str1[i - 1] === str2[j - 1]) {
+                        dp[i][j] = dp[i - 1][j - 1];
+                    } else {
+                        dp[i][j] = Math.min(
+                            dp[i - 1][j - 1] + 1,
+                            dp[i - 1][j] + 1,
+                            dp[i][j - 1] + 1
+                        );
+                    }
+                }
+            }
+
+            return dp[m][n];
+        }
+
+        function normalizujString(str) {
+            return str.toLowerCase()
+                .trim()
+                .replace(/\s+/g, ' ')
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "");
+        }
+
+        function checkDuplicates(input) {
+            const produktDiv = input.closest('.produkt-edytor');
+            const sklepDiv = produktDiv.closest('.sklep-edytor');
+            const wartoscInput = normalizujString(input.value);
+            
+            // Usuń poprzednie ostrzeżenie
+            const stareBadge = produktDiv.querySelector('.duplicate-badge');
+            if (stareBadge) stareBadge.remove();
+            produktDiv.classList.remove('duplicate-warning');
+
+            if (wartoscInput.length < 2) return;
+
+            // Sprawdź duplikaty w tym samym sklepie
+            const produkty = sklepDiv.querySelectorAll('.produkt-edytor');
+            let znalezionoDuplikat = false;
+
+            produkty.forEach(innyProdukt => {
+                if (innyProdukt === produktDiv) return;
+                
+                const innyInput = innyProdukt.querySelector('input[name*="[name]"]');
+                const innaWartosc = normalizujString(innyInput.value);
+                
+                if (innaWartosc.length < 2) return;
+
+                // Dokładne dopasowanie
+                if (wartoscInput === innaWartosc) {
+                    znalezionoDuplikat = true;
+                    return;
+                }
+
+                // Fuzzy matching - próg 80% podobieństwa
+                const distance = levenshteinDistance(wartoscInput, innaWartosc);
+                const maxLen = Math.max(wartoscInput.length, innaWartosc.length);
+                const similarity = 1 - (distance / maxLen);
+
+                if (similarity >= 0.8) {
+                    znalezionoDuplikat = true;
+                }
+            });
+
+            if (znalezionoDuplikat) {
+                produktDiv.classList.add('duplicate-warning');
+                const badge = document.createElement('span');
+                badge.className = 'duplicate-badge';
+                badge.textContent = '⚠️';
+                badge.title = 'Możliwy duplikat produktu';
+                produktDiv.appendChild(badge);
+            }
+        }
+
+        // ========================================
+        // WYSZUKIWANIE Z PRZYCISKIEM CZYSZCZENIA
+        // ========================================
+
+        let searchTimeout;
+        const searchInput = document.getElementById('searchInput');
+        const searchClear = document.getElementById('searchClear');
+        
+        searchInput?.addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            
+            // Pokaż/ukryj przycisk X
+            if (e.target.value) {
+                searchClear.classList.add('visible');
+            } else {
+                searchClear.classList.remove('visible');
+            }
+            
+            searchTimeout = setTimeout(() => {
+                filterSklepy(e.target.value);
+            }, 300);
+        });
+
+        searchClear?.addEventListener('click', () => {
+            searchInput.value = '';
+            searchClear.classList.remove('visible');
+            filterSklepy('');
+            searchInput.focus();
+        });
+
+        function filterSklepy(query) {
+            const search = query.toLowerCase().trim();
+            const sklepy = document.querySelectorAll('.sklep-edytor');
+            let visibleCount = 0;
+
+            if (!search) {
+                sklepy.forEach(sklep => {
+                    sklep.classList.remove('hidden');
+                    sklep.querySelectorAll('.produkt-edytor').forEach(p => {
+                        p.style.display = '';
+                    });
+                });
+                document.getElementById('brakWynikow').style.display = 'none';
+                restoreCollapsedStates();
+                return;
+            }
+
+            sklepy.forEach(sklep => {
+                const nazwaSklep = sklep.querySelector('input[name*="[nazwa]"]').value.toLowerCase();
+                const produkty = sklep.querySelectorAll('.produkt-edytor');
+                let sklepVisible = false;
+
+                if (nazwaSklep.includes(search)) {
+                    sklepVisible = true;
+                    produkty.forEach(p => p.style.display = '');
+                } else {
+                    let visibleProducts = 0;
+                    produkty.forEach(produkt => {
+                        const nazwaProdukt = produkt.querySelector('input[name*="[name]"]').value.toLowerCase();
+                        if (nazwaProdukt.includes(search)) {
+                            produkt.style.display = '';
+                            visibleProducts++;
+                            sklepVisible = true;
+                        } else {
+                            produkt.style.display = 'none';
+                        }
+                    });
+                }
+
+                if (sklepVisible) {
+                    sklep.classList.remove('hidden');
+                    sklep.classList.remove('collapsed');
+                    visibleCount++;
+                } else {
+                    sklep.classList.add('hidden');
+                }
+            });
+
+            document.getElementById('brakWynikow').style.display = visibleCount === 0 ? 'block' : 'none';
+        }
+
+        // ========================================
+        // ZWIJANIE/ROZWIJANIE SKLEPÓW
+        // ========================================
+
+        function toggleSklep(naglowek) {
+            const sklep = naglowek.closest('.sklep-edytor');
+            sklep.classList.toggle('collapsed');
+            
+            const sklepIndex = sklep.dataset.sklepIndex;
+            const collapsedStates = getCollapsedStates();
+            collapsedStates[sklepIndex] = sklep.classList.contains('collapsed');
+            localStorage.setItem('shopicker_collapsed', JSON.stringify(collapsedStates));
+        }
+
+        function getCollapsedStates() {
+            const saved = localStorage.getItem('shopicker_collapsed');
+            return saved ? JSON.parse(saved) : {};
+        }
+
+        function restoreCollapsedStates() {
+            const states = getCollapsedStates();
+            document.querySelectorAll('.sklep-edytor').forEach(sklep => {
+                const index = sklep.dataset.sklepIndex;
+                if (states[index]) {
+                    sklep.classList.add('collapsed');
+                }
+            });
+        }
+
+        document.getElementById('btnRozwinWszystkie')?.addEventListener('click', () => {
+            document.querySelectorAll('.sklep-edytor').forEach(sklep => {
+                sklep.classList.remove('collapsed');
+            });
+            localStorage.removeItem('shopicker_collapsed');
+        });
+
+        document.getElementById('btnZwinWszystkie')?.addEventListener('click', () => {
+            document.querySelectorAll('.sklep-edytor').forEach(sklep => {
+                sklep.classList.add('collapsed');
+            });
+            const states = {};
+            document.querySelectorAll('.sklep-edytor').forEach(sklep => {
+                states[sklep.dataset.sklepIndex] = true;
+            });
+            localStorage.setItem('shopicker_collapsed', JSON.stringify(states));
+        });
 
         // ========================================
         // DRAG AND DROP - SKLEPY
@@ -958,7 +1470,6 @@ if (!is_array($produkty_sklepy)) {
                 inputy[1].name = `sklepy[${sklepIndex}][produkty][${pIndex}][unit]`;
             });
             
-            // Aktualizuj licznik produktów
             aktualizujLicznikProduktow(sklepDiv);
         }
 
@@ -980,41 +1491,41 @@ if (!is_array($produkty_sklepy)) {
             
             const sklepHTML = `
                 <div class="sklep-edytor" data-sklep-index="${nowyIndex}" draggable="true">
-                    <div class="sklep-naglowek">
-                        <span class="sklep-naglowek-drag" title="Przeciągnij, aby zmienić kolejność">☰</span>
+                    <div class="sklep-naglowek" onclick="toggleSklep(this)">
+                        <span class="toggle-icon">▼</span>
+                        <span class="sklep-naglowek-drag" 
+                              draggable="true"
+                              onclick="event.stopPropagation()"
+                              title="Przeciągnij, aby zmienić kolejność">☰</span>
                         <input type="text" 
                                name="sklepy[${nowyIndex}][nazwa]" 
                                placeholder="Nazwa sklepu"
                                required
+                               onclick="event.stopPropagation()"
                                aria-label="Nazwa sklepu">
                         <span class="licznik-produktow">
-                            📦 <span class="liczba-produktow">1</span>
+                            📦 <span class="liczba-produktow">0</span>
                         </span>
-                        <button type="button" class="btn-usun" onclick="usunSklep(this)" title="Usuń sklep">
-                            🗑️ Usuń sklep
-                        </button>
-                    </div>
-                    
-                    <div class="produkty-kontener">
-                        <div class="produkt-edytor" draggable="true">
-                            <span class="produkt-drag-handle" title="Przeciągnij, aby zmienić kolejność">☰</span>
-                            <input type="text" 
-                                   name="sklepy[${nowyIndex}][produkty][0][name]"
-                                   placeholder="Nazwa produktu"
-                                   required
-                                   aria-label="Nazwa produktu">
-                            <input type="text" 
-                                   name="sklepy[${nowyIndex}][produkty][0][unit]"
-                                   placeholder="np. kg, szt, l"
-                                   required
-                                   aria-label="Jednostka">
-                            <button type="button" class="btn-usun" onclick="usunProdukt(this)" title="Usuń produkt">🗑️</button>
+                        <div class="sklep-akcje" onclick="event.stopPropagation()">
+                            <button type="button" class="btn-usun-sklep" onclick="usunSklep(this)" title="Usuń sklep">
+                                🗑️ Usuń
+                            </button>
                         </div>
                     </div>
                     
-                    <button type="button" class="btn-dodaj" onclick="dodajProdukt(this)">
-                        ➕ Dodaj produkt
-                    </button>
+                    <div class="sklep-zawartość">
+                        <div class="dodaj-produkt-gora">
+                            <button type="button" class="btn-dodaj" onclick="dodajProdukt(this, true)">
+                                ➕ Dodaj produkt
+                            </button>
+                        </div>
+                        
+                        <div class="produkty-kontener">
+                            <div class="pusty-sklep-info">
+                                Brak produktów. Dodaj pierwszy produkt powyżej.
+                            </div>
+                        </div>
+                    </div>
                 </div>
             `;
             
@@ -1023,7 +1534,6 @@ if (!is_array($produkty_sklepy)) {
             setupProduktDragAndDrop();
             formZmieniony = true;
             
-            // Scroll do nowego sklepu
             setTimeout(() => {
                 const nowyElement = kontener.lastElementChild;
                 nowyElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -1031,12 +1541,11 @@ if (!is_array($produkty_sklepy)) {
             }, 100);
         }
 
-        function dodajProdukt(button) {
+        function dodajProdukt(button, naGorze = false) {
             const sklepDiv = button.closest('.sklep-edytor');
             const sklepIndex = sklepDiv.dataset.sklepIndex;
             const produktyKontener = sklepDiv.querySelector('.produkty-kontener');
             
-            // Usuń info o pustym sklepie jeśli istnieje
             const pustyInfo = produktyKontener.querySelector('.pusty-sklep-info');
             if (pustyInfo) {
                 pustyInfo.remove();
@@ -1051,24 +1560,29 @@ if (!is_array($produkty_sklepy)) {
                            name="sklepy[${sklepIndex}][produkty][${aktualnaIlosc}][name]"
                            placeholder="Nazwa produktu"
                            required
+                           oninput="checkDuplicates(this)"
                            aria-label="Nazwa produktu">
                     <input type="text" 
                            name="sklepy[${sklepIndex}][produkty][${aktualnaIlosc}][unit]"
                            placeholder="np. kg, szt, l"
                            required
                            aria-label="Jednostka">
-                    <button type="button" class="btn-usun" onclick="usunProdukt(this)" title="Usuń produkt">🗑️</button>
+                    <button type="button" class="btn-usun-produkt" onclick="usunProdukt(this)" title="Usuń produkt">🗑️</button>
                 </div>
             `;
             
-            produktyKontener.insertAdjacentHTML('beforeend', produktHTML);
+            if (naGorze) {
+                produktyKontener.insertAdjacentHTML('afterbegin', produktHTML);
+            } else {
+                produktyKontener.insertAdjacentHTML('beforeend', produktHTML);
+            }
+            
             setupProduktDragAndDrop();
-            aktualizujLicznikProduktow(sklepDiv);
+            aktualizujIndeksyProduktow(sklepDiv, sklepIndex);
             formZmieniony = true;
             
-            // Focus na nowym produkcie
             setTimeout(() => {
-                const nowyProdukt = produktyKontener.lastElementChild;
+                const nowyProdukt = naGorze ? produktyKontener.firstElementChild : produktyKontener.lastElementChild;
                 nowyProdukt.querySelector('input').focus();
             }, 100);
         }
@@ -1083,9 +1597,8 @@ if (!is_array($produkty_sklepy)) {
                 produktDiv.remove();
                 aktualizujIndeksyProduktow(sklepDiv, sklepIndex);
                 
-                // Pokaż info o pustym sklepie jeśli to był ostatni produkt
                 if (produktyKontener.querySelectorAll('.produkt-edytor').length === 0) {
-                    produktyKontener.innerHTML = '<div class="pusty-sklep-info">Brak produktów. Dodaj pierwszy produkt poniżej.</div>';
+                    produktyKontener.innerHTML = '<div class="pusty-sklep-info">Brak produktów. Dodaj pierwszy produkt powyżej.</div>';
                     aktualizujLicznikProduktow(sklepDiv);
                 }
                 
@@ -1113,7 +1626,6 @@ if (!is_array($produkty_sklepy)) {
             
             const scrollPos = window.scrollY || document.documentElement.scrollTop;
             
-            // Pokaż przycisk gdy scroll > 200px i scrollujemy w dół
             if (scrollPos > 200 && scrollPos > lastScrollTop) {
                 plywajacyPrzyciskElement.style.display = 'block';
             } else if (scrollPos < 100) {
@@ -1137,7 +1649,7 @@ if (!is_array($produkty_sklepy)) {
                 formEdycja.appendChild(hiddenInput);
                 formEdycja.submit();
             }
-        }		
+        }
 
         // ========================================
         // INICJALIZACJA
@@ -1146,11 +1658,10 @@ if (!is_array($produkty_sklepy)) {
         let formZmieniony = false;
 
         document.addEventListener('DOMContentLoaded', () => {
-            // Setup drag and drop
             setupSklepDragAndDrop();
             setupProduktDragAndDrop();
+            restoreCollapsedStates();
 
-            // Setup pływający przycisk
             plywajacyPrzyciskElement = document.getElementById('plywajacyPrzycisk');
             
             if (plywajacyPrzyciskElement) {
@@ -1163,7 +1674,6 @@ if (!is_array($produkty_sklepy)) {
                 pokazPrzycisk();
             }
 
-            // Setup formularza
             const formEdycja = document.getElementById('formEdycja');
             
             if (formEdycja) {
@@ -1180,7 +1690,6 @@ if (!is_array($produkty_sklepy)) {
                 });
             }
 
-            // Ostrzeżenie przed opuszczeniem
             window.addEventListener('beforeunload', (e) => {
                 if (formZmieniony) {
                     e.preventDefault();
@@ -1188,7 +1697,6 @@ if (!is_array($produkty_sklepy)) {
                 }
             });
 
-            // Aktualizuj liczniki przy załadowaniu
             document.querySelectorAll('.sklep-edytor').forEach(sklep => {
                 aktualizujLicznikProduktow(sklep);
             });
@@ -1199,10 +1707,20 @@ if (!is_array($produkty_sklepy)) {
         // ========================================
 
         document.addEventListener('keydown', (e) => {
-            // Ctrl/Cmd + S = Zapisz
             if ((e.ctrlKey || e.metaKey) && e.key === 's') {
                 e.preventDefault();
                 submitFormZPlywajecgo();
+            }
+            
+            if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+                e.preventDefault();
+                searchInput?.focus();
+            }
+            
+            if (e.key === 'Escape' && searchInput === document.activeElement) {
+                searchInput.value = '';
+                searchClear.classList.remove('visible');
+                filterSklepy('');
             }
         });
     </script>
