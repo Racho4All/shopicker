@@ -1,5 +1,4 @@
 <?php
-
 // ============================================
 // SHOPICKER - Lista zakupów
 // Wersja: 2.1 (ultra-lekka)
@@ -149,16 +148,13 @@ $aktualne_ilosci = wczytajIlosci($plik_danych);
 // FILTROWANIE SKLEPÓW Z GET
 // ============================================
 
-$filtr_sklepy = [];
+$filtr_sklepy = null;
 if (isset($_GET['sklepy'])) {
-    // Jeśli parametr istnieje (nawet pusty) - użyj go
     if ($_GET['sklepy'] !== '') {
         $filtr_sklepy = explode(',', $_GET['sklepy']);
+    } else {
+        $filtr_sklepy = []; // Pusta tablica = ukryj wszystko
     }
-    // Jeśli pusty string - $filtr_sklepy zostaje pustą tablicą = ukryj wszystko
-} else {
-    // Brak parametru - pokaż wszystkie (dla kompatybilności wstecznej)
-    $filtr_sklepy = null;
 }
 
 // ============================================
@@ -167,9 +163,6 @@ if (isset($_GET['sklepy'])) {
 
 $do_kupienia_total = 0;
 foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
-    // Jeśli $filtr_sklepy === null - pokaż wszystkie
-    // Jeśli $filtr_sklepy === [] (pusta tablica) - ukryj wszystkie
-    // Jeśli $filtr_sklepy ma wartości - pokaż tylko te
     if ($filtr_sklepy !== null && !in_array($sklep_nazwa, $filtr_sklepy)) continue;
     
     foreach ($produkty_w_sklepie as $item) {
@@ -200,7 +193,6 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
     <link rel="manifest" href="/shopicker/assets/site.webmanifest" />
     
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <link rel="stylesheet" href="/shopicker/style.css">
     
     <style>
         /* Reset i podstawy */
@@ -209,12 +201,53 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
             -webkit-tap-highlight-color: transparent;
         }
         
-        body {
+        body { 
+            font-family: sans-serif; 
+            max-width: 800px; 
+            margin: 20px auto; 
+            padding: 0 10px; 
+            line-height: 1.4;
             padding-bottom: 80px;
         }
         
         /* ========================================
-           STICKY TOP BAR - minimalistyczny
+           NAGŁÓWEK
+           ======================================== */
+        
+        .naglowek-kontener { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            flex-wrap: wrap; 
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .montserrat-logo {
+            margin: 0;
+            font-size: 1.8em;
+        }
+        
+        .przycisk-naglowek { 
+            padding: 8px 12px; 
+            color: white; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            text-decoration: none; 
+            display: inline-block;
+            font-size: 0.9em;
+        }
+        
+        .przycisk-odswiez { background-color: #007bff; }
+        .przycisk-ukryj { background-color: #5d6a7a; }
+        .przycisk-edytuj { background-color: #9C27B0; }
+        .przycisk-odswiez:hover { background-color: #0056b3; }
+        .przycisk-ukryj:hover { background-color: #434d58; }
+        .przycisk-edytuj:hover { background-color: #7B1FA2; }
+        
+        /* ========================================
+           STICKY TOP BAR
            ======================================== */
         
         .top-bar {
@@ -228,6 +261,7 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
             justify-content: space-between;
             align-items: center;
             gap: 10px;
+            margin-bottom: 15px;
         }
         
         .counter-badge {
@@ -244,88 +278,22 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
             background: #4CAF50;
         }
         
-        .top-actions {
-            display: flex;
-            gap: 8px;
-        }
-        
-        .btn-top {
-            padding: 8px 12px;
-            border: none;
-            border-radius: 6px;
-            font-size: 0.95em;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            white-space: nowrap;
-        }
-        
-        .btn-toggle {
-            background: #2196F3;
-            color: white;
-        }
-        
-        .btn-toggle:active {
-            background: #1976D2;
-            transform: scale(0.95);
-        }
-        
-        .btn-edit {
-            background: #9C27B0;
-            color: white;
-        }
-        
-        .btn-edit:active {
-            background: #7B1FA2;
-            transform: scale(0.95);
-        }
-        
         /* ========================================
-           WYBÓR SKLEPÓW - kompaktowy
+           WYBÓR SKLEPÓW
            ======================================== */
         
         .sklepy-picker {
             background: #f5f5f5;
             padding: 12px 15px;
-            margin-bottom: 10px;
-        }
-        
-        .sklepy-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-            gap: 8px;
-            margin-top: 8px;
-        }
-        
-        .sklep-chip {
-            display: flex;
-            align-items: center;
-            padding: 8px 10px;
-            background: white;
-            border-radius: 6px;
-            border: 2px solid #ddd;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            font-size: 0.95em;
-        }
-        
-        .sklep-chip input {
-            margin: 0 6px 0 0;
-            width: 18px;
-            height: 18px;
-        }
-        
-        .sklep-chip:has(input:checked) {
-            background: #E3F2FD;
-            border-color: #2196F3;
-            font-weight: 600;
+            margin-bottom: 20px;
+            border-radius: 5px;
         }
         
         .sklepy-label {
             font-weight: 600;
             font-size: 0.9em;
             color: #666;
-            margin-bottom: 5px;
+            margin-bottom: 8px;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -340,212 +308,283 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
             padding: 4px 8px;
         }
         
+        .sklepy-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 8px;
+        }
+        
+        .sklep-chip {
+            display: flex;
+            align-items: center;
+            padding: 6px 10px;
+            background: white;
+            border-radius: 4px;
+            border: 2px solid #ddd;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.9em;
+        }
+        
+        .sklep-chip input {
+            margin: 0 6px 0 0;
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+        
+        .sklep-chip:has(input:checked) {
+            background: #E3F2FD;
+            border-color: #2196F3;
+            font-weight: 600;
+        }
+        
+        .sklep-chip span {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
         /* ========================================
-           LISTA PRODUKTÓW - maksymalnie czytelna
+           SEKCJE SKLEPÓW
            ======================================== */
         
-        .sklep-sekcja {
-            margin-bottom: 20px;
+        .sklep-sekcja { 
+            margin-bottom: 30px; 
+            border: 1px solid #ccc; 
+            padding: 15px; 
+            border-radius: 5px;
         }
         
         .sklep-sekcja.ukryty {
             display: none;
         }
         
-        .sklep-nazwa {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 12px 15px;
-            margin: 0 0 10px 0;
-            border-radius: 8px;
-            font-size: 1.2em;
-            font-weight: 700;
+        .sklep-nazwa { 
+            font-size: 1.5em; 
+            margin-top: 0; 
+            border-bottom: 2px solid #eee; 
+            padding-bottom: 10px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            position: sticky;
-            top: 50px;
-            z-index: 50;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
         }
         
         .sklep-counter {
-            background: rgba(255,255,255,0.3);
+            font-size: 0.7em;
+            background: #FF9800;
+            color: white;
             padding: 4px 10px;
             border-radius: 12px;
-            font-size: 0.85em;
+            font-weight: normal;
         }
         
-        .lista {
-            list-style: none;
+        .sklep-counter.zero {
+            background: #4CAF50;
+        }
+        
+        /* ========================================
+           LISTA PRODUKTÓW
+           ======================================== */
+        
+        .lista { 
+            list-style-type: none; 
             padding: 0;
             margin: 0;
         }
         
-        .lista li {
-            background: white;
-            margin-bottom: 8px;
-            padding: 14px 15px;
-            border-radius: 8px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 12px;
-            transition: all 0.3s ease;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        .lista li { 
+            padding: 10px; 
+            border-bottom: 1px solid #ddd; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            flex-wrap: wrap;
+            transition: opacity 0.3s ease, background-color 0.3s ease, max-height 0.3s ease;
+            overflow: hidden;
+            max-height: 200px;
         }
         
-        .lista li.status-need {
-            border-left: 5px solid #FF9800;
-            background: #FFF8E1;
+        .ukryty {
+            opacity: 0 !important;
+            max-height: 0 !important;
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
+            border-bottom: none !important;
+            visibility: hidden !important;
         }
         
-        .lista li.status-have {
-            border-left: 5px solid #4CAF50;
-            opacity: 0.6;
+        .status-have { 
+            background-color: #ccffcc; 
+            opacity: 0.85; 
+            text-decoration: none; 
         }
         
-        .lista li.ukryty {
-            display: none;
+        .status-need { 
+            background-color: #ffcccc; 
+            font-weight: bold; 
+            text-decoration: none;
         }
         
         .nazwa-produktu {
             flex: 1;
-            font-size: 1.1em;
-            font-weight: 600;
+            min-width: 150px;
         }
         
         .ilosc-tekst {
-            display: block;
-            font-size: 0.9em;
-            font-weight: 500;
-            color: #FF9800;
-            margin-top: 4px;
+            font-style: italic;
+            display: inline;
+            margin-left: 5px;
         }
         
-        .status-have .ilosc-tekst {
-            color: #4CAF50;
+        /* ========================================
+           FORMULARZE
+           ======================================== */
+        
+        .formularz-ilosc { 
+            display: flex; 
+            align-items: center; 
+            justify-content: flex-end;
+            gap: 5px;
+            max-width: 250px;
         }
         
-        .formularz-ilosc {
-            display: flex;
-            gap: 6px;
-            align-items: center;
+        .wejscie-ilosc { 
+            width: 50px; 
+            padding: 5px; 
+            text-align: right;
+            border: 1px solid #ccc;
+            border-radius: 3px;
         }
         
-        /* Przyciski w liście */
-        .przycisk {
-            padding: 10px 16px;
+        .jednostka-miary { 
+            font-size: 0.9em; 
+            color: #555;
+            min-width: 4ch;
+            text-align: left;
+        }
+        
+        .przycisk { 
+            padding: 6px 10px; 
+            cursor: pointer; 
+            border-radius: 4px; 
             border: none;
-            border-radius: 6px;
-            font-weight: 600;
-            font-size: 1em;
-            cursor: pointer;
-            transition: all 0.2s ease;
+            font-size: 0.9em;
             white-space: nowrap;
         }
         
-        .przycisk-mam {
-            background: #4CAF50;
-            color: white;
-            min-width: 100px;
-        }
-        
-        .przycisk-mam:active {
-            background: #45a049;
-            transform: scale(0.95);
-        }
-        
-        .przycisk-zmien {
-            background: #2196F3;
+        .przycisk-mam { 
+            background-color: #28a745; 
             color: white;
         }
         
-        .przycisk-zmien:active {
-            background: #1976D2;
-            transform: scale(0.95);
+        .przycisk-mam:hover {
+            background-color: #218838;
         }
         
-        .wejscie-ilosc {
-            width: 60px;
-            padding: 8px;
-            border: 2px solid #ddd;
-            border-radius: 6px;
-            font-size: 1em;
-            text-align: center;
-            font-weight: 600;
+        .przycisk-zmien { 
+            background-color: #007bff; 
+            color: white;
         }
         
-        .jednostka-miary {
-            font-size: 0.9em;
-            color: #666;
-            font-weight: 500;
+        .przycisk-zmien:hover {
+            background-color: #0056b3;
         }
         
         /* ========================================
            RESPONSYWNOŚĆ MOBILE
            ======================================== */
         
-		@media (max-width: 600px) {
-			/* Status "Mam" - dwa wiersze */
-			.status-have .formularz-ilosc form {
-				display: grid;
-				grid-template-columns: 1fr auto;
-				grid-template-rows: auto auto;
-				gap: 8px;
-				width: 100%;
-			}
-			
-			.status-have .wejscie-ilosc {
-				grid-column: 1;
-				grid-row: 1;
-				width: 100%;
-			}
-			
-			.status-have .jednostka-miary {
-				grid-column: 2;
-				grid-row: 1;
-			}
-			
-			.status-have .przycisk-zmien {
-				grid-column: 1 / -1;
-				grid-row: 2;
-				width: 100%;
-			}
-		}
-
-
-		/* Bardzo małe ekrany */
-		@media (max-width: 400px) {
-			.sklepy-grid {
-				grid-template-columns: 1fr;
-			}
-			
-			.przycisk {
-				font-size: 0.9em;
-				padding: 10px 8px;
-			}
-			
-			.wejscie-ilosc {
-				width: 50px;
-			}
-		}
-        
-        /* ========================================
-           ANIMACJE
-           ======================================== */
-        
-        @keyframes kupiono {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.02); }
+        @media screen and (max-width: 600px) {
+            body {
+                margin: 10px auto;
+            }
+            
+            .top-bar {
+                padding: 8px 10px;
+            }
+            
+            .counter-badge {
+                font-size: 1em;
+                padding: 6px 12px;
+            }
+            
+            .sklepy-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+            
+            .sklep-chip {
+                font-size: 0.85em;
+            }
+            
+            .lista li { 
+                flex-direction: column; 
+                align-items: flex-start; 
+                gap: 10px;
+            }
+            
+            .nazwa-produktu {
+                width: 100%;
+            }
+            
+            .formularz-ilosc { 
+                justify-content: flex-end; 
+                max-width: 100%;
+                width: 100%;
+            }
+            
+            .formularz-ilosc form {
+                display: flex;
+                align-items: center;
+                gap: 5px;
+            }
+            
+            /* Przycisk "Kupione" na pełną szerokość */
+            .status-need .formularz-ilosc {
+                width: 100%;
+            }
+            
+            .status-need .przycisk-mam {
+                width: 100%;
+            }
         }
         
-        .kupiono-anim {
-            animation: kupiono 0.3s ease;
+        @media screen and (max-width: 400px) {
+            .sklepy-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
 <body>
+
+    <!-- ============================================ -->
+    <!-- NAGŁÓWEK -->
+    <!-- ============================================ -->
+    
+    <div class="naglowek-kontener">
+        <h1 class="montserrat-logo">
+            <img src="/shopicker/assets/favicon.svg" 
+                 alt="Logo" 
+                 style="height: 1.5em; vertical-align: middle; margin-right: -0.2em">
+            Shopicker
+        </h1>
+        <div>
+            <a href="/shopicker/edytuj.php" class="przycisk-naglowek przycisk-edytuj">✏️ Edytuj</a>
+            <a href="/shopicker/" 
+               class="przycisk-naglowek przycisk-odswiez" 
+               onclick="sessionStorage.setItem('shoppingList_scrollPos', window.scrollY);">
+                🔄 Odśwież
+            </a>
+            <button id="przyciskUkryj" 
+                    class="przycisk-naglowek przycisk-ukryj" 
+                    onclick="toggleUkryj()">
+					Wszystkie
+            </button>
+        </div>
+    </div>
 
     <!-- ============================================ -->
     <!-- STICKY TOP BAR -->
@@ -558,14 +597,6 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
             <?php else: ?>
                 ✓ Gotowe!
             <?php endif; ?>
-        </div>
-        <div class="top-actions">
-            <button class="btn-top btn-toggle" onclick="toggleUkryj()" id="btnToggle">
-                👁️
-            </button>
-            <a href="/shopicker/edytuj.php" class="btn-top btn-edit">
-                ✏️
-            </a>
         </div>
     </div>
 
@@ -595,7 +626,7 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
     <!-- ============================================ -->
 
     <?php foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie): ?>
-        <?php if (!empty($filtr_sklepy) && !in_array($sklep_nazwa, $filtr_sklepy)) continue; ?>
+        <?php if ($filtr_sklepy !== null && !in_array($sklep_nazwa, $filtr_sklepy)) continue; ?>
         
         <?php
         $do_kupienia_sklep = 0;
@@ -613,9 +644,9 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
         <div class="sklep-sekcja" data-sklep="<?php echo htmlspecialchars($sklep_nazwa); ?>">
             <h2 class="sklep-nazwa">
                 <span><?php echo htmlspecialchars($sklep_nazwa); ?></span>
-                <?php if ($do_kupienia_sklep > 0): ?>
-                    <span class="sklep-counter"><?php echo $do_kupienia_sklep; ?></span>
-                <?php endif; ?>
+                <span class="sklep-counter <?php echo $do_kupienia_sklep === 0 ? 'zero' : ''; ?>">
+                    <?php echo $do_kupienia_sklep; ?> / <?php echo count($produkty_w_sklepie); ?>
+                </span>
             </h2>
             <ul class="lista">
                 <?php foreach ($produkty_w_sklepie as $item): 
@@ -629,36 +660,40 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
                     $czy_potrzebny = ($ilosc_obecna !== null && $ilosc_obecna > 0);
                     $klasa_css = $czy_potrzebny ? 'status-need' : 'status-have';
                     $ilosc_tekst = $czy_potrzebny 
-                        ? "$ilosc_obecna $jednostka" 
-                        : "✓ Mam";
+                        ? "Ilość: $ilosc_obecna $jednostka" 
+                        : "Mam/Nie potrzebuję";
                     $wartosc_input = $czy_potrzebny ? $ilosc_obecna : '';
                     $id_elementu = generuj_id_kotwicy($sklep_nazwa, $produkt);
                 ?>
                 
                 <li id="<?php echo htmlspecialchars($id_elementu); ?>" class="<?php echo $klasa_css; ?>">
                     <span class="nazwa-produktu">
-                        <?php echo htmlspecialchars($produkt); ?>
+                        <?php echo htmlspecialchars($produkt); ?> - 
                         <span class="ilosc-tekst"><?php echo $ilosc_tekst; ?></span>
                     </span>
                     
                     <div class="formularz-ilosc">
                         <?php if ($czy_potrzebny): ?>
-                            <form method="POST" style="display:inline;" onsubmit="animKupiono(this)">
+                            <form method="POST" 
+                                  style="display:inline;" 
+                                  onsubmit="sessionStorage.setItem('shoppingList_scrollPos', window.scrollY);">
                                 <input type="hidden" name="produkt" value="<?php echo htmlspecialchars($produkt); ?>">
                                 <input type="hidden" name="sklep" value="<?php echo htmlspecialchars($sklep_nazwa); ?>">
                                 <button type="submit" name="oznacz_jako_mam" class="przycisk przycisk-mam">
-                                    ✓ Kupione
+                                    Kupione!
                                 </button>
                             </form>
                         <?php else: ?>
-                            <form method="POST" style="display:inline;" onsubmit="saveScroll()">
+                            <form method="POST" 
+                                  style="display:inline;" 
+                                  onsubmit="sessionStorage.setItem('shoppingList_scrollPos', window.scrollY);">
+                                <span class="jednostka-miary"><?php echo htmlspecialchars($jednostka); ?></span>
                                 <input type="number" 
                                        name="ilosc" 
                                        value="<?php echo htmlspecialchars($wartosc_input); ?>" 
                                        min="0" 
                                        class="wejscie-ilosc"
                                        placeholder="1">
-                                <span class="jednostka-miary"><?php echo htmlspecialchars($jednostka); ?></span>
                                 <input type="hidden" name="produkt" value="<?php echo htmlspecialchars($produkt); ?>">
                                 <input type="hidden" name="sklep" value="<?php echo htmlspecialchars($sklep_nazwa); ?>">
                                 <button type="submit" name="ustaw_ilosc" class="przycisk przycisk-zmien">
@@ -680,6 +715,8 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
         const STORAGE_SKLEPY = 'karteczka_wybrane_sklepy';
         
         const checkboxes = document.querySelectorAll('.checkboxSklep');
+        const btnToggle = document.getElementById('przyciskUkryj');
+        const btnToggleShops = document.getElementById('btnToggleShops');
         
         // ========================================
         // Toggle ukrywania
@@ -698,6 +735,7 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
             });
             
             localStorage.setItem(STORAGE_HIDE, anyVisible ? 'ukryte' : 'pokazane');
+            btnToggle.textContent = anyVisible ? 'Zamówione' : 'Wszystkie';
             ukryjPusteSklepy();
         }
         
@@ -712,130 +750,76 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
         // Sklepy
         // ========================================
         
-		function loadSklepy() {
-			const urlParams = new URLSearchParams(window.location.search);
-			const fromUrl = urlParams.get('sklepy');
-			
-			if (fromUrl !== null) {
-				// Mamy parametr w URL (nawet pusty)
-				localStorage.setItem(STORAGE_SKLEPY, fromUrl);
-				const lista = fromUrl.split(',').filter(s => s.trim() !== '');
-				checkboxes.forEach(ch => ch.checked = lista.includes(ch.value));
-			} else {
-				// Brak parametru - sprawdź localStorage
-				const saved = localStorage.getItem(STORAGE_SKLEPY);
-				if (saved !== null) {
-					const lista = saved.split(',').filter(s => s.trim() !== '');
-					checkboxes.forEach(ch => ch.checked = lista.includes(ch.value));
-				} else {
-					// Pierwsze uruchomienie - zaznacz wszystkie
-					checkboxes.forEach(ch => ch.checked = true);
-				}
-			}
-			// Aktualizuj tekst przycisku
-			const btnToggleShops = document.getElementById('btnToggleShops');
-			if (btnToggleShops) {
-				const allChecked = Array.from(checkboxes).every(ch => ch.checked);
-				btnToggleShops.textContent = allChecked ? 'żaden' : 'wszystkie';
-			}			
-		}
+        function loadSklepy() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const fromUrl = urlParams.get('sklepy');
+            
+            if (fromUrl !== null) {
+                localStorage.setItem(STORAGE_SKLEPY, fromUrl);
+                const lista = fromUrl.split(',').filter(s => s.trim() !== '');
+                checkboxes.forEach(ch => ch.checked = lista.includes(ch.value));
+            } else {
+                const saved = localStorage.getItem(STORAGE_SKLEPY);
+                if (saved !== null) {
+                    const lista = saved.split(',').filter(s => s.trim() !== '');
+                    checkboxes.forEach(ch => ch.checked = lista.includes(ch.value));
+                } else {
+                    checkboxes.forEach(ch => ch.checked = true);
+                }
+            }
+            
+            updateToggleButton();
+        }
         
-		function saveSklepy() {
-			const wybrane = Array.from(checkboxes)
-				.filter(ch => ch.checked)
-				.map(ch => ch.value);
-			
-			const sklepyParam = wybrane.join(',');
-			localStorage.setItem(STORAGE_SKLEPY, sklepyParam);
-			
-			// ZAWSZE dodaj parametr sklepy (nawet jeśli pusty)
-			const url = '/shopicker/?sklepy=' + encodeURIComponent(sklepyParam);
-			sessionStorage.setItem(STORAGE_SCROLL, window.scrollY);
-			window.location.href = url;
-		}
+        function saveSklepy() {
+            const wybrane = Array.from(checkboxes)
+                .filter(ch => ch.checked)
+                .map(ch => ch.value);
+            
+            const sklepyParam = wybrane.join(',');
+            localStorage.setItem(STORAGE_SKLEPY, sklepyParam);
+            
+            const url = '/shopicker/?sklepy=' + encodeURIComponent(sklepyParam);
+            sessionStorage.setItem(STORAGE_SCROLL, window.scrollY);
+            window.location.href = url;
+        }
         
-		function toggleAllShops() {
-			const allChecked = Array.from(checkboxes).every(ch => ch.checked);
-			
-			if (allChecked) {
-				// Są wszystkie zaznaczone - odznacz wszystkie
-				checkboxes.forEach(ch => ch.checked = false);
-			} else {
-				// Niektóre odznaczone - zaznacz wszystkie
-				checkboxes.forEach(ch => ch.checked = true);
-			}
-			
-			saveSklepy();
-			
-			// Aktualizuj tekst przed przeładowaniem
-			const btnToggleShops = document.getElementById('btnToggleShops');
-			if (btnToggleShops) {
-				const allChecked = Array.from(checkboxes).every(ch => ch.checked);
-				btnToggleShops.textContent = allChecked ? 'żaden' : 'wszystkie';
-			}			
-		}
+        function toggleAllShops() {
+            const allChecked = Array.from(checkboxes).every(ch => ch.checked);
+            checkboxes.forEach(ch => ch.checked = !allChecked);
+            saveSklepy();
+        }
+        
+        function updateToggleButton() {
+            if (!btnToggleShops) return;
+            const allChecked = Array.from(checkboxes).every(ch => ch.checked);
+            btnToggleShops.textContent = allChecked ? 'żadne' : 'wszystkie';
+        }
         
         checkboxes.forEach(ch => ch.addEventListener('change', saveSklepy));
         
         // ========================================
-        // Scroll & animacje
+        // Scroll
         // ========================================
         
-        function saveScroll() {
-            sessionStorage.setItem(STORAGE_SCROLL, window.scrollY);
+        let scrollTimeout;
+        window.addEventListener('scroll', () => {
+            if (scrollTimeout) clearTimeout(scrollTimeout);
+            scrollTimeout = setTimeout(() => {
+                sessionStorage.setItem(STORAGE_SCROLL, window.scrollY);
+            }, 100);
+        }, { passive: true });
+        
+        function restoreScroll() {
+            const pos = sessionStorage.getItem(STORAGE_SCROLL);
+            if (pos) {
+                const scrollPos = parseInt(pos);
+                window.scrollTo(0, scrollPos);
+                setTimeout(() => {
+                    sessionStorage.removeItem(STORAGE_SCROLL);
+                }, 100);
+            }
         }
-        
-		function restoreScroll() {
-			const pos = sessionStorage.getItem(STORAGE_SCROLL);
-			if (pos) {
-				// Natychmiastowe przywrócenie bez animacji
-				const scrollPos = parseInt(pos);
-				window.scrollTo({
-					top: scrollPos,
-					behavior: 'instant' // Bez smooth scrollowania
-				});
-				
-				// Fallback dla starszych przeglądarek
-				if (window.scrollY !== scrollPos) {
-					window.scrollTo(0, scrollPos);
-				}
-				
-				// Wyczyść dopiero po upewnieniu się że scroll działa
-				setTimeout(() => {
-					sessionStorage.removeItem(STORAGE_SCROLL);
-				}, 100);
-			}
-		}
-        
-		function animKupiono(form) {
-			// Zapisz dokładną pozycję PRZED submitem
-			const currentScroll = window.scrollY;
-			sessionStorage.setItem(STORAGE_SCROLL, currentScroll);
-			
-			const li = form.closest('li');
-			if (li) {
-				li.classList.add('kupiono-anim');
-				// Dodaj małe opóźnienie żeby animacja była widoczna
-				setTimeout(() => {
-					sessionStorage.setItem(STORAGE_SCROLL, currentScroll);
-				}, 50);
-			}
-			
-			return true; // Pozwól na submit
-		}
-        
-        //window.addEventListener('scroll', () => {
-        //    sessionStorage.setItem(STORAGE_SCROLL, window.scrollY);
-        //});
-		
-		let scrollTimeout;
-		window.addEventListener('scroll', () => {
-			if (scrollTimeout) clearTimeout(scrollTimeout);
-			scrollTimeout = setTimeout(() => {
-				sessionStorage.setItem(STORAGE_SCROLL, window.scrollY);
-			}, 100);
-		}, { passive: true });		
-		
         
         // ========================================
         // Ukryte pola w formularzach
@@ -864,6 +848,7 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
             const hideState = localStorage.getItem(STORAGE_HIDE);
             if (hideState === 'ukryte') {
                 document.querySelectorAll('.status-have').forEach(el => el.classList.add('ukryty'));
+                btnToggle.textContent = 'Wszystkie';
             }
             ukryjPusteSklepy();
             
