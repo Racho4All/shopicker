@@ -186,7 +186,7 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
 <head>
     <meta charset="UTF-8">
     <title>Shopicker - lista zakupów</title>
-    
+
     <!-- Favicons -->
     <link rel="icon" type="image/png" href="/shopicker/assets/favicon-96x96.png" sizes="96x96" />
     <link rel="icon" type="image/svg+xml" href="/shopicker/assets/favicon.svg" />
@@ -194,56 +194,139 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
     <link rel="apple-touch-icon" sizes="180x180" href="/shopicker/assets/apple-touch-icon.png" />
     <meta name="apple-mobile-web-app-title" content="Shopicker" />
     <link rel="manifest" href="/shopicker/assets/site.webmanifest" />
+	
+    <!-- FONT LOADING - dodaj tutaj -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600&display=swap" rel="stylesheet">	
     
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <link rel="stylesheet" href="/shopicker/style.css">
     
     <style>
-        /* Reset i podstawy */
+        /* ========================================
+           IMPORT FONTÓW
+           ======================================== */
+        
+        /*@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');*/
+        
+        /* ========================================
+           RESET I PODSTAWY
+           ======================================== */
+        
         * {
             box-sizing: border-box;
             -webkit-tap-highlight-color: transparent;
         }
         
-        body {
+        body { 
+            font-family: sans-serif; 
+            max-width: 675px; 
+            margin: 20px auto; 
+            padding: 0 10px; 
+            line-height: 1.4;
             padding-bottom: 80px;
         }
         
+		.montserrat-logo {
+			font-family: "Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+			font-optical-sizing: auto;
+			font-weight: 600;
+			font-style: normal;
+			margin: 0;
+			font-size: 1.8em;
+		}
+        
         /* ========================================
-           STICKY TOP BAR - minimalistyczny
+           STYLE ZE STAREGO CSS (niekonfliktowe)
            ======================================== */
         
-        .top-bar {
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            background: white;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            padding: 10px 15px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 10px;
+        /* Przycisk edycji */
+        .przycisk-edytuj { 
+            background-color: #2196F3 !important; 
         }
         
-        .counter-badge {
-            background: #FF9800;
-            color: white;
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-weight: 700;
-            font-size: 1.1em;
-            white-space: nowrap;
+        .przycisk-edytuj:hover { 
+            background-color: #1976D2 !important; 
         }
         
-        .counter-badge.zero {
-            background: #4CAF50;
+        .naglowek-kontener { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            flex-wrap: wrap; 
+            gap: 10px; 
         }
         
-        .top-actions {
-            display: flex;
-            gap: 8px;
+        .przycisk-naglowek { 
+            padding: 8px 12px; 
+            color: white; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            text-decoration: none; 
+            display: inline-block; 
         }
+        
+        .przycisk-odswiez { 
+            background-color: #007bff; 
+        }
+        
+        .przycisk-ukryj { 
+            background-color: #5d6a7a; 
+        }
+        
+        .przycisk-odswiez:hover { 
+            background-color: #0056b3; 
+        }
+        
+        .przycisk-ukryj:hover { 
+            background-color: #434d58; 
+        }
+        
+		/* ========================================
+		   STICKY TOP BAR - minimalistyczny
+		   ======================================== */
+
+		.top-bar {
+			position: sticky;
+			top: 0;
+			z-index: 100;
+			background: white;
+			box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+			padding: 10px 15px;
+			display: flex;
+			flex-wrap: wrap;
+			justify-content: space-between;
+			align-items: center;
+			gap: 10px;
+		}
+
+		.counter-badge {
+			background: #FF9800;
+			color: white;
+			padding: 8px 16px;
+			border-radius: 20px;
+			font-weight: 700;
+			font-size: 1.1em;
+			white-space: nowrap;
+			order: 1;
+		}
+
+		.counter-badge.zero {
+			background: #4CAF50;
+		}
+
+		.montserrat-logo {
+			margin: 0;
+			font-size: 1.8em;
+			order: 2;
+		}
+
+		.top-actions {
+			display: flex;
+			gap: 8px;
+			order: 3;
+		}
         
         .btn-top {
             padding: 8px 12px;
@@ -265,16 +348,16 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
             background: #1976D2;
             transform: scale(0.95);
         }
-		
-		.btn-refresh {
-			background: #FF9800;
-			color: white;
-		}
+        
+        .btn-refresh {
+            background: #FF9800;
+            color: white;
+        }
 
-		.btn-refresh:active {
-			background: #F57C00;
-			transform: scale(0.95);
-		}		
+        .btn-refresh:active {
+            background: #F57C00;
+            transform: scale(0.95);
+        }		
         
         .btn-edit {
             background: #9C27B0;
@@ -488,126 +571,152 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
             font-weight: 500;
         }
         
-/* ========================================
-   RESPONSYWNOŚĆ MOBILE
-   ======================================== */
+		/* ========================================
+		   RESPONSYWNOŚĆ MOBILE
+		   ======================================== */
 
-@media (max-width: 600px) {
-    .top-bar {
-        padding: 8px 12px;
-    }
-    
-    .counter-badge {
-        font-size: 1em;
-        padding: 6px 12px;
-    }
-    
-    .btn-top {
-        padding: 8px 10px;
-        font-size: 0.9em;
-    }
-    
-    .sklepy-grid {
-        grid-template-columns: 1fr 1fr;
-    }
-    
-    .sklep-chip {
-        font-size: 0.9em;
-        padding: 6px 8px;
-    }
-    
-    .sklep-nazwa {
-        font-size: 1.1em;
-        padding: 10px 12px;
-        top: 44px;
-    }
-    
-    /* NOWY UKŁAD DLA PRODUKTÓW */
-    .lista li {
-        display: flex;
-        flex-direction: column;
-        align-items: stretch;
-        padding: 12px;
-        gap: 10px; /* Większy odstęp między liniami */
-        min-height: auto; /* Pozwól na rozszerzanie */
-        max-height: none; /* Usuń ograniczenie */
-        height: auto; /* Auto wysokość */
-    }
-    
-    /* Nazwa produktu w pierwszej linii - SAMA, może się zawijać */
-    .nazwa-produktu {
-        font-size: 1.05em;
-        width: 100%;
-        display: block;
-        word-wrap: break-word;
-        overflow-wrap: break-word;
-        line-height: 1.4; /* Dobra czytelność */
-    }
-    
-    /* Ukryj .ilosc-tekst w górnej linii */
-    .nazwa-produktu .ilosc-tekst {
-        display: none;
-    }
-    
-    /* Formularz w drugiej linii - ZAWSZE widoczny */
-    .formularz-ilosc {
-        width: 100%;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 8px;
-        flex-wrap: nowrap;
-        flex-shrink: 0;
-    }
-    
-    /* Tekst ilości/status na początku linii */
-    .formularz-ilosc::before {
-        font-size: 0.9em;
-        font-weight: 500;
-        flex-shrink: 0;
-    }
-    
-    .status-need .formularz-ilosc::before {
-        content: attr(data-ilosc);
-        color: #FF9800;
-    }
-    
-    .status-have .formularz-ilosc::before {
-        content: "✓ Mam";
-        color: #4CAF50;
-    }
-    
-    .formularz-ilosc form {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        flex-shrink: 0;
-    }
-    
-    /* Przycisk "Kupione" */
-    .status-need .przycisk-mam {
-        padding: 10px 16px;
-        white-space: nowrap;
-    }
-    
-    /* Input i przycisk "Kup" */
-    .wejscie-ilosc {
-        width: 60px;
-        font-size: 1em;
-        flex-shrink: 0;
-    }
-    
-    .jednostka-miary {
-        min-width: auto;
-        flex-shrink: 0;
-    }
-    
-    .przycisk-zmien {
-        padding: 10px 14px;
-        white-space: nowrap;
-        flex-shrink: 0;
-    }
-}
+		@media (max-width: 600px) {
+			.top-bar {
+				padding: 8px 12px;
+				gap: 8px;
+			}
+			
+			/* H1 w pierwszej linii - całą szerokość */
+			.montserrat-logo {
+				order: 0;
+				width: 100%;
+				text-align: center;
+				font-size: 1.8em;
+				margin-bottom: 4px;
+			}
+			
+			/* Counter i przyciski w drugiej linii */
+			.counter-badge {
+				order: 1;
+				font-size: 1em;
+				padding: 6px 12px;
+			}
+			
+			.top-actions {
+				order: 2;
+			}
+			
+			.btn-top {
+				padding: 8px 10px;
+				font-size: 0.9em;
+			}
+			
+			.sklepy-grid {
+				grid-template-columns: 1fr 1fr;
+			}
+			
+			.sklep-chip {
+				font-size: 0.9em;
+				padding: 6px 8px;
+			}
+			
+			.sklep-nazwa {
+				font-size: 1.1em;
+				padding: 10px 12px;
+				top: 44px;
+			}
+			
+			/* NOWY UKŁAD DLA PRODUKTÓW */
+			.lista li {
+				display: flex;
+				flex-direction: column;
+				align-items: stretch;
+				padding: 12px;
+				gap: 10px;
+				min-height: auto;
+				max-height: none;
+				height: auto;
+			}
+			
+			/* Nazwa produktu w pierwszej linii - SAMA, może się zawijać */
+			.nazwa-produktu {
+				font-size: 1.05em;
+				width: 100%;
+				display: block;
+				word-wrap: break-word;
+				overflow-wrap: break-word;
+				line-height: 1.4;
+			}
+			
+			/* Ukryj .ilosc-tekst w górnej linii */
+			.nazwa-produktu .ilosc-tekst {
+				display: none;
+			}
+			
+			/* Formularz w drugiej linii - ZAWSZE widoczny */
+			.formularz-ilosc {
+				width: 100%;
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+				gap: 8px;
+				flex-wrap: nowrap;
+				flex-shrink: 0;
+			}
+			
+			/* Tekst ilości/status na początku linii */
+			.formularz-ilosc::before {
+				font-size: 0.9em;
+				font-weight: 500;
+				flex-shrink: 0;
+			}
+			
+			.status-need .formularz-ilosc::before {
+				content: attr(data-ilosc);
+				color: #FF9800;
+			}
+			
+			.status-have .formularz-ilosc::before {
+				content: "✓ Mam";
+				color: #4CAF50;
+			}
+			
+			.formularz-ilosc form {
+				display: flex;
+				align-items: center;
+				gap: 6px;
+				flex-shrink: 0;
+			}
+			
+			/* Przycisk "Kupione" */
+			.status-need .przycisk-mam {
+				padding: 10px 16px;
+				white-space: nowrap;
+			}
+			
+			/* Input i przycisk "Kup" */
+			.wejscie-ilosc {
+				width: 60px;
+				font-size: 1em;
+				flex-shrink: 0;
+			}
+			
+			.jednostka-miary {
+				min-width: auto;
+				flex-shrink: 0;
+			}
+			
+			.przycisk-zmien {
+				padding: 10px 14px;
+				white-space: nowrap;
+				flex-shrink: 0;
+			}
+			
+			/* Style ze starego CSS dla mobile */
+			label { 
+				white-space: nowrap; 
+				font-size: larger; 
+			}
+			
+			.status-need { 
+				font-size: larger; 
+			}
+		}
         
         /* ========================================
            ANIMACJE
@@ -637,7 +746,12 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
                 ✓ Gotowe!
             <?php endif; ?>
         </div>
-		
+		<h1 class="montserrat-logo">
+            <img src="/shopicker/assets/favicon.svg" 
+                 alt="Logo" 
+                 style="height: 1.5em; vertical-align: middle; margin-right: -0.2em">
+            Shopicker
+        </h1>
 		<div class="top-actions">
 			<button class="btn-top btn-toggle" onclick="toggleUkryj()" id="btnToggle">
 				👁️

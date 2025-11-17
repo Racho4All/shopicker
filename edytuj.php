@@ -135,836 +135,991 @@ if (!is_array($produkty_sklepy)) {
     <meta charset="UTF-8">
     <title>Edycja listy - Shopicker</title>
     <link rel="icon" type="image/svg+xml" href="/shopicker/assets/favicon.svg" />
+	
+    <!-- FONT LOADING - dodaj tutaj -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600&display=swap" rel="stylesheet">	
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="/shopicker/style.css">
-    <style>
-        :root {
-            --primary-color: #4CAF50;
-            --primary-hover: #45a049;
-            --secondary-color: #2196F3;
-            --secondary-hover: #1976D2;
-            --danger-color: #FF6B6B;
-            --danger-hover: #EE5A52;
-            --danger-bg: #FFE5E5;
-            --warning-color: #FF9800;
-            --warning-bg: #FFF3E0;
-            --border-color: #ddd;
-            --bg-light: #f9f9f9;
-            --bg-lighter: #fafafa;
-            --shadow: 0 2px 8px rgba(0,0,0,0.1);
-            --shadow-hover: 0 4px 12px rgba(0,0,0,0.15);
-            --radius: 8px;
-            --transition: all 0.3s ease;
-        }
+	<style>
+		/* ========================================
+		   IMPORT FONTÓW
+		   ======================================== */
+		
+		/*@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');*/
+		
+		/* ========================================
+		   ZMIENNE I RESET
+		   ======================================== */
+		
+		:root {
+			--primary-color: #4CAF50;
+			--primary-hover: #45a049;
+			--secondary-color: #2196F3;
+			--secondary-hover: #1976D2;
+			--accent-color: #FF9800;
+			--accent-hover: #F57C00;
+			--purple-color: #9C27B0;
+			--purple-hover: #7B1FA2;
+			--danger-color: #FF6B6B;
+			--danger-hover: #EE5A52;
+			--danger-bg: #FFE5E5;
+			--warning-color: #FF9800;
+			--warning-bg: #FFF3E0;
+			--border-color: #ddd;
+			--bg-light: #f9f9f9;
+			--bg-lighter: #fafafa;
+			--shadow: 0 2px 8px rgba(0,0,0,0.1);
+			--shadow-hover: 0 4px 12px rgba(0,0,0,0.15);
+			--radius: 8px;
+			--transition: all 0.3s ease;
+		}
 
-        * {
-            box-sizing: border-box;
-        }
+		* {
+			box-sizing: border-box;
+			-webkit-tap-highlight-color: transparent;
+		}
 
-        body {
-            padding-bottom: 100px;
-        }
+		body {
+			font-family: sans-serif;
+			margin: 0 auto;
+			padding: 0;
+			line-height: 1.4;
+			padding-bottom: 100px;
+			max-width: 670px;
+		}
 
-        .edytor-kontener {
-            max-width: 1200px;
-            margin: 20px auto;
-            padding: 20px;
-        }
-        
-        /* ========================================
-           TOOLBAR - FILTR I AKCJE
-           ======================================== */
-        
-        .toolbar {
-            background: white;
-            border-radius: var(--radius);
-            padding: 16px;
-            margin-bottom: 20px;
-            box-shadow: var(--shadow);
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-        
-        .search-box {
-            flex: 1;
-            min-width: 200px;
-            position: relative;
-        }
-        
-        .search-box input {
-            width: 100%;
-            padding: 12px 44px 12px 44px;
-            border: 2px solid var(--border-color);
-            border-radius: var(--radius);
-            font-size: 1em;
-            transition: var(--transition);
-        }
-        
-        .search-box input:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
-        }
-        
-        .search-icon {
-            position: absolute;
-            left: 16px;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 1.2em;
-            color: #999;
-            pointer-events: none;
-        }
-        
-        .search-clear {
-            position: absolute;
-            right: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: #ddd;
-            color: #666;
-            border: none;
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            cursor: pointer;
-            font-size: 0.9em;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            transition: var(--transition);
-            padding: 0;
-            line-height: 1;
-        }
-        
-        .search-clear:hover {
-            background: #ccc;
-            color: #333;
-        }
-        
-        .search-clear.visible {
-            display: flex;
-        }
-        
-        .toolbar-actions {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-        
-        .btn-toolbar {
-            padding: 10px 16px;
-            background: var(--secondary-color);
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 0.95em;
-            font-weight: 500;
-            transition: var(--transition);
-            white-space: nowrap;
-        }
-        
-        .btn-toolbar:hover {
-            background: var(--secondary-hover);
-        }
-        
-        .btn-toolbar.active {
-            background: var(--primary-color);
-        }
-        
-        /* ========================================
-           SKLEPY - SKŁADANE
-           ======================================== */
-        
-        .sklep-edytor {
-            background: white;
-            border: 2px solid var(--border-color);
-            border-radius: var(--radius);
-            margin-bottom: 12px;
-            transition: var(--transition);
-            box-shadow: var(--shadow);
-        }
-        
-        .sklep-edytor.hidden {
-            display: none;
-        }
-        
-        .sklep-edytor:hover {
-            box-shadow: var(--shadow-hover);
-        }
-        
-        .sklep-edytor.dragging {
-            opacity: 0.6;
-            border-color: var(--primary-color);
-            box-shadow: 0 8px 20px rgba(76, 175, 80, 0.3);
-        }
-        
-        .sklep-edytor.drag-over {
-            border-color: var(--secondary-color);
-            background: #e3f2fd;
-            border-style: dashed;
-        }
-        
-        .sklep-edytor.collapsed .sklep-zawartość {
-            display: none;
-        }
-        
-        .sklep-edytor.collapsed .sklep-naglowek {
-            border-bottom: none;
-        }
-        
-        .sklep-naglowek {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 12px 16px;
-            border-bottom: 2px solid var(--bg-light);
-            background: var(--bg-lighter);
-            border-radius: var(--radius) var(--radius) 0 0;
-            cursor: pointer;
-            user-select: none;
-        }
-        
-        .sklep-edytor.collapsed .sklep-naglowek {
-            border-radius: var(--radius);
-        }
-        
-        .toggle-icon {
-            font-size: 1.2em;
-            color: #666;
-            transition: transform 0.3s ease;
-            cursor: pointer;
-            padding: 4px;
-        }
-        
-        .sklep-edytor.collapsed .toggle-icon {
-            transform: rotate(-90deg);
-        }
-        
-        .sklep-naglowek-drag {
-            cursor: grab;
-            font-size: 1.3em;
-            color: #999;
-            padding: 4px 8px;
-            transition: var(--transition);
-            border-radius: 4px;
-        }
-        
-        .sklep-naglowek-drag:hover {
-            color: var(--primary-color);
-            background: white;
-        }
-        
-        .sklep-naglowek-drag:active {
-            cursor: grabbing;
-        }
-        
-        .sklep-naglowek input {
-            flex: 1;
-            font-size: 1.1em;
-            font-weight: 600;
-            padding: 8px 12px;
-            border: 2px solid transparent;
-            border-radius: 6px;
-            transition: var(--transition);
-            background: white;
-            min-width: 150px;
-        }
-        
-        .sklep-naglowek input:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
-        }
-        
-        .licznik-produktow {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            background: white;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 0.9em;
-            color: #666;
-            font-weight: 500;
-            white-space: nowrap;
-        }
-        
-        .sklep-akcje {
-            display: flex;
-            gap: 6px;
-        }
-        
-        .btn-usun-sklep {
-            background: var(--danger-bg);
-            color: var(--danger-color);
-            border: 1px solid var(--danger-color);
-            padding: 6px 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 0.9em;
-            font-weight: 500;
-            transition: var(--transition);
-            white-space: nowrap;
-        }
-        
-        .btn-usun-sklep:hover {
-            background: var(--danger-color);
-            color: white;
-            box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
-        }
-        
-        /* ========================================
-           ZAWARTOŚĆ SKLEPU
-           ======================================== */
-        
-        .sklep-zawartość {
-            padding: 16px;
-        }
-        
-        .dodaj-produkt-gora {
-            background: var(--bg-lighter);
-            border-radius: var(--radius);
-            padding: 12px;
-            margin-bottom: 12px;
-        }
-        
-        .produkty-kontener {
-            background: var(--bg-lighter);
-            border-radius: var(--radius);
-            padding: 12px;
-            margin-bottom: 12px;
-        }
-        
-        .produkt-edytor {
-            display: grid;
-            grid-template-columns: auto 1fr 120px auto;
-            gap: 8px;
-            margin-bottom: 10px;
-            align-items: center;
-            background: white;
-            padding: 10px;
-            border-radius: 6px;
-            border: 1px solid var(--border-color);
-            transition: var(--transition);
-        }
-        
-        .produkt-edytor:last-child {
-            margin-bottom: 0;
-        }
-        
-        .produkt-edytor:hover {
-            box-shadow: var(--shadow);
-        }
-        
-        .produkt-edytor.dragging {
-            opacity: 0.6;
-            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.2);
-        }
-        
-        .produkt-edytor.duplicate-warning {
-            border-color: var(--warning-color);
-            background: var(--warning-bg);
-        }
-        
-        .produkt-drag-handle {
-            cursor: grab;
-            font-size: 1.1em;
-            color: #bbb;
-            padding: 4px 6px;
-            user-select: none;
-            transition: var(--transition);
-            border-radius: 4px;
-        }
-        
-        .produkt-drag-handle:hover {
-            color: var(--primary-color);
-            background: var(--bg-light);
-        }
-        
-        .produkt-drag-handle:active {
-            cursor: grabbing;
-        }
-        
-        .produkt-edytor input[type="text"] {
-            padding: 8px 10px;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            width: 100%;
-            font-size: 0.95em;
-            transition: var(--transition);
-        }
-        
-        .produkt-edytor input[type="text"]:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
-        }
-        
-        .btn-usun-produkt {
-            background: var(--danger-bg);
-            color: var(--danger-color);
-            border: 1px solid var(--danger-color);
-            padding: 8px 12px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.9em;
-            font-weight: 500;
-            transition: var(--transition);
-        }
-        
-        .btn-usun-produkt:hover {
-            background: var(--danger-color);
-            color: white;
-            box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
-        }
-        
-        .btn-dodaj {
-            background: var(--primary-color);
-            color: white;
-            width: 100%;
-            padding: 10px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 500;
-            transition: var(--transition);
-            font-size: 0.95em;
-        }
-        
-        .btn-dodaj:hover {
-            background: var(--primary-hover);
-            box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
-        }
-        
-        .pusty-sklep-info {
-            text-align: center;
-            padding: 24px;
-            background: white;
-            border-radius: var(--radius);
-            color: #999;
-            font-style: italic;
-        }
-        
-        /* ========================================
-           OSTRZEŻENIE O DUPLIKACIE
-           ======================================== */
-        
-        .duplicate-badge {
-            position: absolute;
-            top: -8px;
-            right: -8px;
-            background: var(--warning-color);
-            color: white;
-            font-size: 0.75em;
-            padding: 3px 8px;
-            border-radius: 12px;
-            font-weight: 600;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-            z-index: 10;
-        }
-        
-        .produkt-edytor {
-            position: relative;
-        }
-        
-        /* ========================================
-           PRZYCISKI GŁÓWNE
-           ======================================== */
-        
-        .btn-dodaj-sklep {
-            background: var(--secondary-color);
-            color: white;
-            border: none;
-            padding: 14px 24px;
-            border-radius: var(--radius);
-            cursor: pointer;
-            font-size: 1.05em;
-            font-weight: 600;
-            margin: 20px 0;
-            width: 100%;
-            transition: var(--transition);
-        }
-        
-        .btn-dodaj-sklep:hover {
-            background: var(--secondary-hover);
-            box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
-        }
-        
-        .przyciski-akcji {
-            display: flex;
-            gap: 12px;
-            margin: 30px 0;
-        }
-        
-        .btn-zapisz {
-            background: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 16px 32px;
-            border-radius: var(--radius);
-            cursor: pointer;
-            font-size: 1.1em;
-            font-weight: 600;
-            flex: 1;
-            transition: var(--transition);
-        }
-        
-        .btn-zapisz:hover {
-            background: var(--primary-hover);
-            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
-        }
-        
-        .btn-anuluj {
-            background: #757575;
-            color: white;
-            border: none;
-            padding: 16px 32px;
-            border-radius: var(--radius);
-            cursor: pointer;
-            font-size: 1.1em;
-            font-weight: 600;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            flex: 1;
-            transition: var(--transition);
-        }
-        
-        .btn-anuluj:hover {
-            background: #616161;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-        }
-        
-        /* ========================================
-           KOMUNIKATY
-           ======================================== */
-        
-        .komunikat {
-            padding: 20px;
-            border-radius: var(--radius);
-            margin-bottom: 24px;
-            box-shadow: var(--shadow);
-            animation: slideIn 0.3s ease-out;
-        }
-        
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        .komunikat.sukces {
-            background: #d4edda;
-            border: 2px solid #c3e6cb;
-            color: #155724;
-        }
-        
-        .komunikat.blad {
-            background: #f8d7da;
-            border: 2px solid #f5c6cb;
-            color: #721c24;
-        }
-        
-        .btn-powrot-sukces {
-            display: inline-block;
-            background: var(--primary-color);
-            color: white;
-            padding: 12px 24px;
-            border-radius: 6px;
-            text-decoration: none;
-            font-weight: 600;
-            transition: var(--transition);
-            margin-top: 12px;
-        }
-        
-        .btn-powrot-sukces:hover {
-            background: var(--primary-hover);
-            box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
-        }
-        
-        /* ========================================
-           PŁYWAJĄCY PRZYCISK
-           ======================================== */
-        
-        .plywajacy-zapisz {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            z-index: 1000;
-            animation: fadeInUp 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-        }
-        
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px) scale(0.9);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0) scale(1);
-            }
-        }
-        
-        .btn-plywajacy-zapisz {
-            background: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 16px 28px;
-            border-radius: 50px;
-            cursor: pointer;
-            font-size: 1.1em;
-            font-weight: 600;
-            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
-            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .btn-plywajacy-zapisz:hover {
-            background: var(--primary-hover);
-            transform: translateY(-3px) scale(1.05);
-            box-shadow: 0 8px 25px rgba(76, 175, 80, 0.5);
-        }
-        
-        .btn-plywajacy-zapisz:active {
-            transform: translateY(-1px) scale(1.02);
-        }
-        
-        /* ========================================
-           INFO O BRAKU WYNIKÓW
-           ======================================== */
-        
-        .brak-wynikow {
-            text-align: center;
-            padding: 60px 20px;
-            color: #999;
-        }
-        
-        .brak-wynikow-icon {
-            font-size: 4em;
-            margin-bottom: 16px;
-        }
-        
-        .brak-wynikow h3 {
-            margin: 0 0 8px 0;
-            color: #666;
-        }
-        
-        .brak-wynikow p {
-            margin: 0;
-            font-size: 0.95em;
-        }
-        
-        /* ========================================
-           RESPONSYWNOŚĆ
-           ======================================== */
-        
-        @media (max-width: 768px) {
-            .edytor-kontener {
-                padding: 12px;
-                margin: 12px auto;
-            }
-            
-            .toolbar {
-                position: relative;
-                padding: 14px;
-                font-size: 1.05em;
-            }
-            
-            .search-box {
-                width: 100%;
-                min-width: auto;
-            }
-            
-            .search-box input {
-                font-size: 1.05em;
-                padding: 14px 44px 14px 46px;
-            }
-            
-            .search-icon {
-                font-size: 1.3em;
-            }
-            
-            .search-clear {
-                width: 28px;
-                height: 28px;
-                font-size: 1em;
-            }
-            
-            .toolbar-actions {
-                width: 100%;
-            }
-            
-            .btn-toolbar {
-                flex: 1;
-                padding: 12px 16px;
-                font-size: 1em;
-            }
-            
-            .sklep-naglowek {
-                flex-wrap: wrap;
-                padding: 12px 14px;
-            }
-            
-            .toggle-icon {
-                font-size: 1.4em;
-            }
-            
-            .sklep-naglowek-drag {
-                font-size: 1.5em;
-            }
-            
-            .sklep-naglowek input {
-                order: 3;
-                width: 100%;
-                margin-top: 10px;
-                font-size: 1.15em;
-                padding: 10px 14px;
-            }
-            
-            .licznik-produktow {
-                order: 2;
-                font-size: 1em;
-                padding: 7px 14px;
-            }
-            
-            .sklep-akcje {
-                order: 4;
-                width: 100%;
-                margin-top: 10px;
-            }
-            
-            .btn-usun-sklep {
-                flex: 1;
-                padding: 12px;
-                font-size: 1.05em;
-            }
-            
-            .produkty-kontener {
-                padding: 12px;
-            }
-            
-            .produkt-edytor {
-                grid-template-columns: auto 1fr;
-                gap: 10px;
-                padding: 12px;
-            }
-            
-            .produkt-drag-handle {
-                grid-row: 1 / 4;
-                font-size: 1.3em;
-            }
-            
-            .produkt-edytor input[type="text"] {
-                font-size: 1.05em;
-                padding: 10px 12px;
-            }
-            
-            .produkt-edytor input[type="text"]:nth-of-type(1) {
-                grid-column: 2;
-            }
-            
-            .produkt-edytor input[type="text"]:nth-of-type(2) {
-                grid-column: 2;
-            }
-            
-            .btn-usun-produkt {
-                grid-column: 1 / 3;
-                width: 100%;
-                padding: 10px;
-                font-size: 1.05em;
-            }
-            
-            .btn-dodaj {
-                padding: 12px;
-                font-size: 1.05em;
-            }
-            
-            .btn-dodaj-sklep {
-                padding: 16px 24px;
-                font-size: 1.1em;
-            }
-            
-            .przyciski-akcji {
-                flex-direction: column;
-            }
-            
-            .btn-zapisz,
-            .btn-anuluj {
-                width: 100%;
-                padding: 18px 32px;
-                font-size: 1.15em;
-            }
-            
-            .plywajacy-zapisz {
-                bottom: 12px;
-                right: 12px;
-                left: 12px;
-            }
-            
-            .btn-plywajacy-zapisz {
-                width: 100%;
-                justify-content: center;
-                padding: 20px 24px;
-                font-size: 1.2em;
-            }
-            
-            .pusty-sklep-info {
-                font-size: 1.05em;
-                padding: 28px;
-            }
-            
-            .brak-wynikow h3 {
-                font-size: 1.2em;
-            }
-            
-            .brak-wynikow p {
-                font-size: 1.05em;
-            }
-        }
-        
-        @media (max-width: 480px) {
-            .sklep-naglowek input {
-                font-size: 1.1em;
-                padding: 10px 12px;
-            }
-            
-            .produkt-edytor input[type="text"] {
-                font-size: 1em;
-                padding: 9px 11px;
-            }
-            
-            .btn-plywajacy-zapisz {
-                padding: 18px 22px;
-                font-size: 1.15em;
-            }
-        }
-        
-        /* ========================================
-           FOCUS VISIBLE (dostępność)
-           ======================================== */
-        
-        button:focus-visible,
-        input:focus-visible,
-        a:focus-visible {
-            outline: 3px solid var(--primary-color);
-            outline-offset: 2px;
-        }
-    </style>
+		.montserrat-logo {
+			font-family: "Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+			font-optical-sizing: auto;
+			font-weight: 600;
+			font-style: normal;
+			margin: 0;
+			font-size: 1.8em;
+		}
+		
+		/* ========================================
+		   STICKY TOP BAR (jak w głównej liście)
+		   ======================================== */
+		
+		.naglowek-kontener {
+			position: sticky;
+			top: 0;
+			z-index: 100;
+			background: white;
+			box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+			padding: 10px 15px;
+			display: flex;
+			flex-wrap: wrap;
+			justify-content: space-between;
+			align-items: center;
+			gap: 10px;
+			margin-bottom: 20px;
+		}
+		
+		.naglowek-kontener h1 {
+			order: 2;
+		}
+		
+		.naglowek-kontener > div {
+			order: 3;
+		}
+		
+		.przycisk-naglowek {
+			padding: 10px 16px;
+			background: var(--secondary-color);
+			color: white;
+			border: none;
+			border-radius: 6px;
+			cursor: pointer;
+			font-size: 0.95em;
+			font-weight: 500;
+			text-decoration: none;
+			display: inline-flex;
+			align-items: center;
+			transition: var(--transition);
+			white-space: nowrap;
+		}
+		
+		.przycisk-naglowek:hover {
+			background: var(--secondary-hover);
+			transform: translateY(-1px);
+			box-shadow: 0 2px 8px rgba(33, 150, 243, 0.3);
+		}
+		
+		.przycisk-naglowek:active {
+			transform: scale(0.95);
+		}
+
+		/* ========================================
+		   EDYTOR - GŁÓWNY KONTENER
+		   ======================================== */
+		
+		.edytor-kontener {
+			max-width: 1200px;
+			margin: 0 auto;
+			padding: 20px;
+		}
+		
+		/* ========================================
+		   TOOLBAR - FILTR I AKCJE
+		   ======================================== */
+		
+		.toolbar {
+			background: white;
+			border-radius: var(--radius);
+			padding: 16px;
+			margin-bottom: 20px;
+			box-shadow: var(--shadow);
+			position: sticky;
+			top: 70px;
+			z-index: 90;
+			display: flex;
+			gap: 12px;
+			flex-wrap: wrap;
+			align-items: center;
+		}
+		
+		.search-box {
+			flex: 1;
+			min-width: 200px;
+			position: relative;
+		}
+		
+		.search-box input {
+			width: 100%;
+			padding: 12px 44px 12px 44px;
+			border: 2px solid var(--border-color);
+			border-radius: var(--radius);
+			font-size: 1em;
+			transition: var(--transition);
+		}
+		
+		.search-box input:focus {
+			outline: none;
+			border-color: var(--primary-color);
+			box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+		}
+		
+		.search-icon {
+			position: absolute;
+			left: 16px;
+			top: 50%;
+			transform: translateY(-50%);
+			font-size: 1.2em;
+			color: #999;
+			pointer-events: none;
+		}
+		
+		.search-clear {
+			position: absolute;
+			right: 12px;
+			top: 50%;
+			transform: translateY(-50%);
+			background: #ddd;
+			color: #666;
+			border: none;
+			width: 24px;
+			height: 24px;
+			border-radius: 50%;
+			cursor: pointer;
+			font-size: 0.9em;
+			display: none;
+			align-items: center;
+			justify-content: center;
+			transition: var(--transition);
+			padding: 0;
+			line-height: 1;
+		}
+		
+		.search-clear:hover {
+			background: #ccc;
+			color: #333;
+		}
+		
+		.search-clear.visible {
+			display: flex;
+		}
+		
+		.toolbar-actions {
+			display: flex;
+			gap: 8px;
+			flex-wrap: wrap;
+		}
+		
+		.btn-toolbar {
+			padding: 10px 16px;
+			background: var(--secondary-color);
+			color: white;
+			border: none;
+			border-radius: 6px;
+			cursor: pointer;
+			font-size: 0.95em;
+			font-weight: 500;
+			transition: var(--transition);
+			white-space: nowrap;
+		}
+		
+		.btn-toolbar:hover {
+			background: var(--secondary-hover);
+			transform: scale(1.02);
+		}
+		
+		.btn-toolbar:active {
+			transform: scale(0.95);
+		}
+		
+		.btn-toolbar.active {
+			background: var(--primary-color);
+		}
+		
+		/* ========================================
+		   SKLEPY - SKŁADANE (delikatny gradient)
+		   ======================================== */
+		
+		.sklep-edytor {
+			background: white;
+			border: 2px solid var(--border-color);
+			border-radius: var(--radius);
+			margin-bottom: 12px;
+			transition: var(--transition);
+			box-shadow: var(--shadow);
+		}
+		
+		.sklep-edytor.hidden {
+			display: none;
+		}
+		
+		.sklep-edytor:hover {
+			box-shadow: var(--shadow-hover);
+		}
+		
+		.sklep-edytor.dragging {
+			opacity: 0.6;
+			border-color: var(--primary-color);
+			box-shadow: 0 8px 20px rgba(76, 175, 80, 0.3);
+		}
+		
+		.sklep-edytor.drag-over {
+			border-color: var(--secondary-color);
+			background: #e3f2fd;
+			border-style: dashed;
+		}
+		
+		.sklep-edytor.collapsed .sklep-zawartość {
+			display: none;
+		}
+		
+		.sklep-edytor.collapsed .sklep-naglowek {
+			border-bottom: none;
+			border-radius: var(--radius);
+		}
+		
+		.sklep-naglowek {
+			background: linear-gradient(135deg, #f8f8fc 0%, #e8e8f5 100%);
+			color: #333;
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			padding: 12px 16px;
+			border-radius: var(--radius) var(--radius) 0 0;
+			cursor: pointer;
+			user-select: none;
+			box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+		}
+		
+		.toggle-icon {
+			font-size: 1.2em;
+			color: #333;
+			transition: transform 0.3s ease;
+			cursor: pointer;
+			padding: 4px;
+		}
+		
+		.sklep-edytor.collapsed .toggle-icon {
+			transform: rotate(-90deg);
+		}
+		
+		.sklep-naglowek-drag {
+			cursor: grab;
+			font-size: 1.3em;
+			color: #666;
+			padding: 4px 8px;
+			transition: var(--transition);
+			border-radius: 4px;
+		}
+
+		.sklep-naglowek-drag:hover {
+			color: #333;
+			background: rgba(0, 0, 0, 0.05);
+		}
+
+		.sklep-naglowek-drag:active {
+			cursor: grabbing;
+		}
+		
+		.sklep-naglowek input {
+			flex: 1;
+			font-size: 1.1em;
+			font-weight: 600;
+			padding: 8px 12px;
+			border: 2px solid #ddd;
+			border-radius: 6px;
+			transition: var(--transition);
+			background: white;
+			min-width: 150px;
+			color: #333;
+		}
+
+		.sklep-naglowek input:focus {
+			outline: none;
+			background: white;
+			border-color: var(--primary-color);
+			box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+		}
+
+		.licznik-produktow {
+			display: inline-flex;
+			align-items: center;
+			gap: 6px;
+			background: rgba(0, 0, 0, 0.08);
+			padding: 6px 12px;
+			border-radius: 20px;
+			font-size: 0.9em;
+			color: #333;
+			font-weight: 600;
+			white-space: nowrap;
+		}
+		
+		.sklep-akcje {
+			display: flex;
+			gap: 6px;
+		}
+		
+		.btn-usun-sklep {
+			background: var(--danger-bg);
+			color: var(--danger-color);
+			border: 2px solid var(--danger-color);
+			padding: 6px 12px;
+			border-radius: 6px;
+			cursor: pointer;
+			font-size: 0.9em;
+			font-weight: 600;
+			transition: var(--transition);
+			white-space: nowrap;
+		}
+		
+		.btn-usun-sklep:hover {
+			background: var(--danger-color);
+			color: white;
+			box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
+			transform: scale(1.05);
+		}
+		
+		.btn-usun-sklep:active {
+			transform: scale(0.95);
+		}
+		
+		/* ========================================
+		   ZAWARTOŚĆ SKLEPU
+		   ======================================== */
+		
+		.sklep-zawartość {
+			padding: 16px;
+			background: white;
+		}
+		
+		.dodaj-produkt-gora {
+			background: var(--bg-lighter);
+			border-radius: var(--radius);
+			padding: 12px;
+			margin-bottom: 12px;
+		}
+		
+		.produkty-kontener {
+			background: var(--bg-lighter);
+			border-radius: var(--radius);
+			padding: 12px;
+			margin-bottom: 12px;
+		}
+		
+		.produkt-edytor {
+			display: grid;
+			grid-template-columns: auto 1fr 120px auto;
+			gap: 8px;
+			margin-bottom: 10px;
+			align-items: center;
+			background: white;
+			padding: 10px;
+			border-radius: 6px;
+			border: 1px solid var(--border-color);
+			transition: var(--transition);
+			position: relative;
+		}
+		
+		.produkt-edytor:last-child {
+			margin-bottom: 0;
+		}
+		
+		.produkt-edytor:hover {
+			box-shadow: var(--shadow);
+		}
+		
+		.produkt-edytor.dragging {
+			opacity: 0.6;
+			box-shadow: 0 4px 12px rgba(76, 175, 80, 0.2);
+		}
+		
+		.produkt-edytor.duplicate-warning {
+			border-color: var(--warning-color);
+			background: var(--warning-bg);
+		}
+		
+		.produkt-drag-handle {
+			cursor: grab;
+			font-size: 1.1em;
+			color: #bbb;
+			padding: 4px 6px;
+			user-select: none;
+			transition: var(--transition);
+			border-radius: 4px;
+		}
+		
+		.produkt-drag-handle:hover {
+			color: var(--primary-color);
+			background: var(--bg-light);
+		}
+		
+		.produkt-drag-handle:active {
+			cursor: grabbing;
+		}
+		
+		.produkt-edytor input[type="text"] {
+			padding: 8px 10px;
+			border: 1px solid var(--border-color);
+			border-radius: 4px;
+			width: 100%;
+			font-size: 0.95em;
+			transition: var(--transition);
+		}
+		
+		.produkt-edytor input[type="text"]:focus {
+			outline: none;
+			border-color: var(--primary-color);
+			box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+		}
+		
+		.btn-usun-produkt {
+			background: var(--danger-bg);
+			color: var(--danger-color);
+			border: 2px solid var(--danger-color);
+			padding: 8px 12px;
+			border-radius: 4px;
+			cursor: pointer;
+			font-size: 0.9em;
+			font-weight: 600;
+			transition: var(--transition);
+		}
+		
+		.btn-usun-produkt:hover {
+			background: var(--danger-color);
+			color: white;
+			box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
+			transform: scale(1.05);
+		}
+		
+		.btn-usun-produkt:active {
+			transform: scale(0.95);
+		}
+		
+		.btn-dodaj {
+			background: var(--primary-color);
+			color: white;
+			width: 100%;
+			padding: 10px;
+			border: none;
+			border-radius: 6px;
+			cursor: pointer;
+			font-weight: 600;
+			transition: var(--transition);
+			font-size: 0.95em;
+		}
+		
+		.btn-dodaj:hover {
+			background: var(--primary-hover);
+			box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+			transform: scale(1.02);
+		}
+		
+		.btn-dodaj:active {
+			transform: scale(0.95);
+		}
+		
+		.pusty-sklep-info {
+			text-align: center;
+			padding: 24px;
+			background: white;
+			border-radius: var(--radius);
+			color: #999;
+			font-style: italic;
+		}
+		
+		/* ========================================
+		   OSTRZEŻENIE O DUPLIKACIE
+		   ======================================== */
+		
+		.duplicate-badge {
+			position: absolute;
+			top: -8px;
+			right: -8px;
+			background: var(--warning-color);
+			color: white;
+			font-size: 0.75em;
+			padding: 3px 8px;
+			border-radius: 12px;
+			font-weight: 600;
+			box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+			z-index: 10;
+		}
+		
+		/* ========================================
+		   PRZYCISKI GŁÓWNE
+		   ======================================== */
+		
+		.btn-dodaj-sklep {
+			background: var(--secondary-color);
+			color: white;
+			border: none;
+			padding: 14px 24px;
+			border-radius: var(--radius);
+			cursor: pointer;
+			font-size: 1.05em;
+			font-weight: 600;
+			margin: 20px 0;
+			width: 100%;
+			transition: var(--transition);
+		}
+		
+		.btn-dodaj-sklep:hover {
+			background: var(--secondary-hover);
+			box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+			transform: scale(1.02);
+		}
+		
+		.btn-dodaj-sklep:active {
+			transform: scale(0.95);
+		}
+		
+		.przyciski-akcji {
+			display: flex;
+			gap: 12px;
+			margin: 30px 0;
+		}
+		
+		.btn-zapisz {
+			background: var(--primary-color);
+			color: white;
+			border: none;
+			padding: 16px 32px;
+			border-radius: var(--radius);
+			cursor: pointer;
+			font-size: 1.1em;
+			font-weight: 600;
+			flex: 1;
+			transition: var(--transition);
+		}
+		
+		.btn-zapisz:hover {
+			background: var(--primary-hover);
+			box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+			transform: scale(1.02);
+		}
+		
+		.btn-zapisz:active {
+			transform: scale(0.95);
+		}
+		
+		.btn-anuluj {
+			background: #757575;
+			color: white;
+			border: none;
+			padding: 16px 32px;
+			border-radius: var(--radius);
+			cursor: pointer;
+			font-size: 1.1em;
+			font-weight: 600;
+			text-decoration: none;
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			flex: 1;
+			transition: var(--transition);
+		}
+		
+		.btn-anuluj:hover {
+			background: #616161;
+			box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+			transform: scale(1.02);
+		}
+		
+		.btn-anuluj:active {
+			transform: scale(0.95);
+		}
+		
+		/* ========================================
+		   KOMUNIKATY
+		   ======================================== */
+		
+		.komunikat {
+			padding: 20px;
+			border-radius: var(--radius);
+			margin-bottom: 24px;
+			box-shadow: var(--shadow);
+			animation: slideIn 0.3s ease-out;
+		}
+		
+		@keyframes slideIn {
+			from {
+				opacity: 0;
+				transform: translateY(-10px);
+			}
+			to {
+				opacity: 1;
+				transform: translateY(0);
+			}
+		}
+		
+		.komunikat.sukces {
+			background: #d4edda;
+			border: 2px solid #c3e6cb;
+			color: #155724;
+		}
+		
+		.komunikat.blad {
+			background: #f8d7da;
+			border: 2px solid #f5c6cb;
+			color: #721c24;
+		}
+		
+		.btn-powrot-sukces {
+			display: inline-block;
+			background: var(--primary-color);
+			color: white;
+			padding: 12px 24px;
+			border-radius: 6px;
+			text-decoration: none;
+			font-weight: 600;
+			transition: var(--transition);
+			margin-top: 12px;
+		}
+		
+		.btn-powrot-sukces:hover {
+			background: var(--primary-hover);
+			box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+			transform: scale(1.05);
+		}
+		
+		.btn-powrot-sukces:active {
+			transform: scale(0.95);
+		}
+		
+		/* ========================================
+		   PŁYWAJĄCY PRZYCISK
+		   ======================================== */
+		
+		.plywajacy-zapisz {
+			position: fixed;
+			bottom: 20px;
+			right: 20px;
+			z-index: 1000;
+			animation: fadeInUp 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+		}
+		
+		@keyframes fadeInUp {
+			from {
+				opacity: 0;
+				transform: translateY(30px) scale(0.9);
+			}
+			to {
+				opacity: 1;
+				transform: translateY(0) scale(1);
+			}
+		}
+		
+		.btn-plywajacy-zapisz {
+			background: var(--primary-color);
+			color: white;
+			border: none;
+			padding: 16px 28px;
+			border-radius: 50px;
+			cursor: pointer;
+			font-size: 1.1em;
+			font-weight: 600;
+			box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+			transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+			display: flex;
+			align-items: center;
+			gap: 10px;
+		}
+		
+		.btn-plywajacy-zapisz:hover {
+			background: var(--primary-hover);
+			transform: translateY(-3px) scale(1.05);
+			box-shadow: 0 8px 25px rgba(76, 175, 80, 0.5);
+		}
+		
+		.btn-plywajacy-zapisz:active {
+			transform: translateY(-1px) scale(1.02);
+		}
+		
+		/* ========================================
+		   INFO O BRAKU WYNIKÓW
+		   ======================================== */
+		
+		.brak-wynikow {
+			text-align: center;
+			padding: 60px 20px;
+			color: #999;
+		}
+		
+		.brak-wynikow-icon {
+			font-size: 4em;
+			margin-bottom: 16px;
+		}
+		
+		.brak-wynikow h3 {
+			margin: 0 0 8px 0;
+			color: #666;
+		}
+		
+		.brak-wynikow p {
+			margin: 0;
+			font-size: 0.95em;
+		}
+		
+		/* ========================================
+		   RESPONSYWNOŚĆ MOBILE
+		   ======================================== */
+		
+		@media (max-width: 768px) {
+			/* NAGŁÓWEK RESPONSYWNY (jak w głównej liście) */
+			.naglowek-kontener {
+				padding: 8px 12px;
+			}
+			
+			.naglowek-kontener h1 {
+				order: 0;
+				width: 100%;
+				text-align: center;
+				font-size: 1.8em;
+				margin-bottom: 4px;
+			}
+			
+			.naglowek-kontener > div {
+				order: 1;
+				width: 100%;
+			}
+			
+			.przycisk-naglowek {
+				width: 100%;
+				justify-content: center;
+				padding: 12px 16px;
+				font-size: 1em;
+			}
+			
+			/* EDYTOR */
+			.edytor-kontener {
+				padding: 12px;
+			}
+			
+			.toolbar {
+				position: relative;
+				padding: 14px;
+				font-size: 1.05em;
+				top: 0;
+			}
+			
+			.search-box {
+				width: 100%;
+				min-width: auto;
+			}
+			
+			.search-box input {
+				font-size: 1.05em;
+				padding: 14px 44px 14px 46px;
+			}
+			
+			.search-icon {
+				font-size: 1.3em;
+			}
+			
+			.search-clear {
+				width: 28px;
+				height: 28px;
+				font-size: 1em;
+			}
+			
+			.toolbar-actions {
+				width: 100%;
+			}
+			
+			.btn-toolbar {
+				flex: 1;
+				padding: 12px 16px;
+				font-size: 1em;
+			}
+			
+			.sklep-naglowek {
+				flex-wrap: wrap;
+				padding: 12px 14px;
+			}
+			
+			.toggle-icon {
+				font-size: 1.4em;
+			}
+			
+			.sklep-naglowek-drag {
+				font-size: 1.5em;
+			}
+			
+			.sklep-naglowek input {
+				order: 3;
+				width: 100%;
+				margin-top: 10px;
+				font-size: 1.15em;
+				padding: 10px 14px;
+			}
+			
+			.licznik-produktow {
+				order: 2;
+				font-size: 1em;
+				padding: 7px 14px;
+			}
+			
+			.sklep-akcje {
+				order: 4;
+				width: 100%;
+				margin-top: 10px;
+			}
+			
+			.btn-usun-sklep {
+				flex: 1;
+				padding: 12px;
+				font-size: 1.05em;
+			}
+			
+			.produkty-kontener {
+				padding: 12px;
+			}
+			
+			.produkt-edytor {
+				grid-template-columns: auto 1fr;
+				gap: 10px;
+				padding: 12px;
+			}
+			
+			.produkt-drag-handle {
+				grid-row: 1 / 4;
+				font-size: 1.3em;
+			}
+			
+			.produkt-edytor input[type="text"] {
+				font-size: 1.05em;
+				padding: 10px 12px;
+			}
+			
+			.produkt-edytor input[type="text"]:nth-of-type(1) {
+				grid-column: 2;
+			}
+			
+			.produkt-edytor input[type="text"]:nth-of-type(2) {
+				grid-column: 2;
+			}
+			
+			.btn-usun-produkt {
+				grid-column: 1 / 3;
+				width: 100%;
+				padding: 10px;
+				font-size: 1.05em;
+			}
+			
+			.btn-dodaj {
+				padding: 12px;
+				font-size: 1.05em;
+			}
+			
+			.btn-dodaj-sklep {
+				padding: 16px 24px;
+				font-size: 1.1em;
+			}
+			
+			.przyciski-akcji {
+				flex-direction: column;
+			}
+			
+			.btn-zapisz,
+			.btn-anuluj {
+				width: 100%;
+				padding: 18px 32px;
+				font-size: 1.15em;
+			}
+			
+			.plywajacy-zapisz {
+				bottom: 12px;
+				right: 12px;
+				left: 12px;
+			}
+			
+			.btn-plywajacy-zapisz {
+				width: 100%;
+				justify-content: center;
+				padding: 20px 24px;
+				font-size: 1.2em;
+			}
+			
+			.pusty-sklep-info {
+				font-size: 1.05em;
+				padding: 28px;
+			}
+			
+			.brak-wynikow h3 {
+				font-size: 1.2em;
+			}
+			
+			.brak-wynikow p {
+				font-size: 1.05em;
+			}
+		}
+		
+		@media (max-width: 480px) {
+			.sklep-naglowek input {
+				font-size: 1.1em;
+				padding: 10px 12px;
+			}
+			
+			.produkt-edytor input[type="text"] {
+				font-size: 1em;
+				padding: 9px 11px;
+			}
+			
+			.btn-plywajacy-zapisz {
+				padding: 18px 22px;
+				font-size: 1.15em;
+			}
+		}
+		
+		/* ========================================
+		   FOCUS VISIBLE (dostępność)
+		   ======================================== */
+		
+		button:focus-visible,
+		input:focus-visible,
+		a:focus-visible {
+			outline: 3px solid var(--primary-color);
+			outline-offset: 2px;
+		}
+	</style>
 </head>
 <body>
 

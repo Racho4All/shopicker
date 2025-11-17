@@ -1,5 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');
-body { font-family: sans-serif; max-width: 800px; margin: 20px auto; padding: 0 10px; line-height: 1.4; }
+body { font-family: sans-serif; max-width: 675px; margin: 20px auto; padding: 0 10px; line-height: 1.4; }
 .montserrat-logo {
   font-family: "Montserrat", sans-serif;
   font-optical-sizing: auto;
