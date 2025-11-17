@@ -149,12 +149,14 @@ $aktualne_ilosci = wczytajIlosci($plik_danych);
 // FILTROWANIE SKLEPÓW Z GET
 // ============================================
 
-$filtr_sklepy = null;
+$filtr_sklepy = null; // null = pokaż wszystkie (brak parametru)
+
 if (isset($_GET['sklepy'])) {
-    if ($_GET['sklepy'] !== '') {
-        $filtr_sklepy = explode(',', $_GET['sklepy']);
+    // Parametr istnieje
+    if ($_GET['sklepy'] === '') {
+        $filtr_sklepy = []; // Pusta tablica = ukryj wszystkie
     } else {
-        $filtr_sklepy = []; // Pusta tablica = nie pokazuj żadnych
+        $filtr_sklepy = explode(',', $_GET['sklepy']);
     }
 }
 
@@ -263,6 +265,16 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
             background: #1976D2;
             transform: scale(0.95);
         }
+		
+		.btn-refresh {
+			background: #FF9800;
+			color: white;
+		}
+
+		.btn-refresh:active {
+			background: #F57C00;
+			transform: scale(0.95);
+		}		
         
         .btn-edit {
             background: #9C27B0;
@@ -625,14 +637,18 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
                 ✓ Gotowe!
             <?php endif; ?>
         </div>
-        <div class="top-actions">
-            <button class="btn-top btn-toggle" onclick="toggleUkryj()" id="btnToggle">
-                👁️
-            </button>
-            <a href="/shopicker/edytuj.php" class="btn-top btn-edit">
-                ✏️
-            </a>
-        </div>
+		
+		<div class="top-actions">
+			<button class="btn-top btn-toggle" onclick="toggleUkryj()" id="btnToggle">
+				👁️
+			</button>
+			<button class="btn-top btn-refresh" onclick="odswiezListe()" title="Odśwież listę">
+				🔄
+			</button>
+			<a href="/shopicker/edytuj.php" class="btn-top btn-edit">
+				✏️
+			</a>
+		</div>		
     </div>
 
     <!-- ============================================ -->
@@ -660,8 +676,20 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
     <!-- LISTY PRODUKTÓW -->
     <!-- ============================================ -->
 
-    <?php foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie): ?>
-        <?php if (!empty($filtr_sklepy) && !in_array($sklep_nazwa, $filtr_sklepy)) continue; ?>
+	<?php foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie): ?>
+		<?php 
+		if ($filtr_sklepy !== null) {
+			// Parametr sklepy istnieje w URL
+			if (empty($filtr_sklepy)) {
+				// Pusta lista = ukryj wszystko
+				continue;
+			} elseif (!in_array($sklep_nazwa, $filtr_sklepy)) {
+				// Sklep nie jest na liście wybranych
+				continue;
+			}
+		}
+		// $filtr_sklepy === null -> pokaż wszystko (brak parametru)
+		?>
         
         <?php
         $do_kupienia_sklep = 0;
@@ -841,6 +869,11 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
 			updateToggleButton();
 			saveSklepy();
 		}
+		
+		function odswiezListe() {
+			sessionStorage.setItem(STORAGE_SCROLL, window.scrollY);
+			location.reload();
+		}		
 
 		function updateToggleButton() {
 			const btnToggle = document.querySelector('.btn-all-shops');
