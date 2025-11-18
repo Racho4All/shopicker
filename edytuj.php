@@ -1,7 +1,151 @@
 <?php
 // ============================================
 // SHOPICKER - Edytor listy produktów
+// Wersja: 2.4 + AUTH
 // ============================================
+
+// === AUTO-WYKRYWANIE ŚCIEŻKI ===
+$base_path = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
+// === KONIEC ===
+
+session_start();
+
+// === SPRAWDZENIE KONFIGURACJI ===
+$config_file = __DIR__ . '/config.php';
+$setup_file = __DIR__ . '/generate_hash.php';
+
+if (!file_exists($config_file)) {
+    // Brak konfiguracji
+    if (file_exists($setup_file)) {
+        // Przekieruj na setup
+        header('Location: ' . $base_path . '/generate_hash.php');
+        exit;
+    } else {
+        // Brak pliku setup - pokaż komunikat błędu
+        http_response_code(500);
+        die('
+        <!DOCTYPE html>
+        <html lang="pl">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Shopicker - Błąd konfiguracji</title>
+            <style>
+                * {
+                    box-sizing: border-box;
+                    margin: 0;
+                    padding: 0;
+                }
+                body { 
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+                    display: flex; 
+                    justify-content: center; 
+                    align-items: center; 
+                    min-height: 100vh; 
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    padding: 20px;
+                }
+                .error-box {
+                    background: white;
+                    padding: 40px;
+                    border-radius: 16px;
+                    text-align: center;
+                    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+                    max-width: 600px;
+                    width: 100%;
+                }
+                h1 { 
+                    font-size: 2.5em; 
+                    margin-bottom: 10px;
+                    color: #c62828;
+                }
+                h2 {
+                    font-size: 1.5em;
+                    margin-bottom: 20px;
+                    color: #666;
+                }
+                p {
+                    color: #666;
+                    margin-bottom: 15px;
+                    line-height: 1.6;
+                    text-align: left;
+                }
+                .code-box {
+                    background: #f5f5f5;
+                    border-left: 4px solid #ff6b6b;
+                    padding: 15px;
+                    margin: 20px 0;
+                    text-align: left;
+                    border-radius: 4px;
+                    font-family: monospace;
+                    font-size: 0.9em;
+                }
+                .steps {
+                    background: #fff3e0;
+                    padding: 20px;
+                    border-radius: 8px;
+                    margin: 20px 0;
+                    text-align: left;
+                }
+                .steps ol {
+                    margin: 10px 0 0 20px;
+                }
+                .steps li {
+                    margin: 8px 0;
+                    line-height: 1.6;
+                }
+                strong {
+                    color: #c62828;
+                }
+                a {
+                    color: #2196F3;
+                    text-decoration: none;
+                }
+                a:hover {
+                    text-decoration: underline;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="error-box">
+                <h1>⚠️ Błąd konfiguracji</h1>
+                <h2>Brak wymaganych plików</h2>
+                
+                <div class="code-box">
+                    <strong>Brakujące pliki:</strong><br>
+                    • config.php (konfiguracja)<br>
+                    • generate_hash.php (instalator)
+                </div>
+                
+                <div class="steps">
+                    <strong>🔧 Jak to naprawić:</strong>
+                    <ol>
+                        <li>Wgraj plik <strong>generate_hash.php</strong> do katalogu aplikacji</li>
+                        <li>Przejdź na <strong>stronę główną</strong> aplikacji</li>
+                        <li>Zostaniesz przekierowany na formularz konfiguracji</li>
+                        <li>Ustaw PIN i gotowe!</li>
+                    </ol>
+                </div>
+                
+                <p style="margin-top: 20px; text-align: center; font-size: 0.9em; color: #999;">
+                    Jeśli problem się powtarza, skontaktuj się z administratorem
+                </p>
+            </div>
+        </body>
+        </html>
+        ');
+    }
+}
+// === KONIEC ===
+
+// === AUTENTYKACJA ===
+if (empty($_SESSION['auth'])) {
+    // Nie zalogowany - przekieruj na główną stronę (która wymusi logowanie)
+    header('Location: ' . $base_path . '/');
+    exit;
+}
+// === KONIEC AUTENTYKACJI ===
+
 header('Cache-Control: no-cache, must-revalidate');
 header('Expires: Mon, 26 Jul 1997 05:00:00 GMT');
 
@@ -134,9 +278,9 @@ if (!is_array($produkty_sklepy)) {
 <head>
     <meta charset="UTF-8">
     <title>Edycja listy - Shopicker</title>
-    <link rel="icon" type="image/svg+xml" href="/shopicker/assets/favicon.svg" />
+    <link rel="icon" type="image/svg+xml" href="<?php echo $base_path; ?>/assets/favicon.svg" />
 	
-    <!-- FONT LOADING - dodaj tutaj -->
+    <!-- FONT LOADING -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600&display=swap" rel="stylesheet">	
@@ -1123,31 +1267,31 @@ if (!is_array($produkty_sklepy)) {
 </head>
 <body>
 
-    <div class="naglowek-kontener">
-        <h1 class="montserrat-logo">
-            <img src="/shopicker/assets/favicon.svg" 
-                 alt="Logo" 
-                 style="height: 1.5em; vertical-align: middle; margin-right: -0.2em">
-            Shopicker - Edycja
-        </h1>
-        <div>
-            <a href="/shopicker/" class="przycisk-naglowek">← Powrót do listy</a>
-        </div>
-    </div>
+	<div class="naglowek-kontener">
+		<h1 class="montserrat-logo">
+			<img src="<?php echo $base_path; ?>/assets/favicon.svg" 
+				 alt="Logo" 
+				 style="height: 1.5em; vertical-align: middle; margin-right: -0.2em">
+			Shopicker - Edycja
+		</h1>
+		<div>
+			<a href="<?php echo $base_path; ?>/" class="przycisk-naglowek">← Powrót do listy</a>
+		</div>
+	</div>
 		
     <div class="edytor-kontener">
-        <?php if ($komunikat): ?>
-            <div class="komunikat <?php echo $komunikat_typ; ?>">
-                <?php echo $komunikat; ?>
-                <?php if ($zapisano_pomyslnie): ?>
-                    <div style="margin-top: 15px;">
-                        <a href="/shopicker/" class="btn-powrot-sukces">
-                            ← Powrót do listy zakupów
-                        </a>
-                    </div>
-                <?php endif; ?>
-            </div>
-        <?php endif; ?>
+		<?php if ($komunikat): ?>
+			<div class="komunikat <?php echo $komunikat_typ; ?>">
+				<?php echo $komunikat; ?>
+				<?php if ($zapisano_pomyslnie): ?>
+					<div style="margin-top: 15px;">
+						<a href="<?php echo $base_path; ?>/" class="btn-powrot-sukces">
+							← Powrót do listy zakupów
+						</a>
+					</div>
+				<?php endif; ?>
+			</div>
+		<?php endif; ?>
 
         <!-- TOOLBAR Z WYSZUKIWANIEM I AKCJAMI -->
         <div class="toolbar">
@@ -1251,22 +1395,25 @@ if (!is_array($produkty_sklepy)) {
                 ➕ Dodaj nowy sklep
             </button>
 
-            <div class="przyciski-akcji">
-                <button type="submit" name="zapisz" class="btn-zapisz">💾 Zapisz zmiany</button>
-                <a href="/shopicker/" class="btn-anuluj">❌ Anuluj</a>
-            </div>
+			<div class="przyciski-akcji">
+				<button type="submit" name="zapisz" class="btn-zapisz">💾 Zapisz zmiany</button>
+				<a href="<?php echo $base_path; ?>/" class="btn-anuluj">❌ Anuluj</a>
+			</div>
         </form>
     </div>
 
-    <script>
-        let sklepCounter = <?php echo $sklep_index; ?>;
-        let draggedElement = null;
-        let draggedType = null;
+	<script>
+		// Ścieżka bazowa (z PHP)
+		const BASE_PATH = '<?php echo $base_path; ?>';
+		
+		let sklepCounter = <?php echo $sklep_index; ?>;
+		let draggedElement = null;
+		let draggedType = null;
 
-        // ========================================
-        // FUZZY DUPLICATE DETECTION
-        // ========================================
-
+		// ========================================
+		// FUZZY DUPLICATE DETECTION
+		// ========================================
+	
         function levenshteinDistance(str1, str2) {
             const m = str1.length;
             const n = str2.length;

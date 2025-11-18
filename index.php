@@ -1,8 +1,274 @@
 <?php
 // ============================================
 // SHOPICKER - Lista zakupów
-// Wersja: 2.3 (ultra-lekka)
+// Wersja: 2.4 (ultra-lekka) + AUTH
 // ============================================
+
+// === AUTO-WYKRYWANIE ŚCIEŻKI ===
+$base_path = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
+// === KONIEC ===
+
+session_start();
+
+// === SPRAWDZENIE KONFIGURACJI ===
+$config_file = __DIR__ . '/config.php';
+$setup_file = __DIR__ . '/generate_hash.php';
+
+if (!file_exists($config_file)) {
+    // Brak konfiguracji
+    if (file_exists($setup_file)) {
+        // Przekieruj na setup
+        header('Location: ' . $base_path . '/generate_hash.php');
+        exit;
+    } else {
+        // Brak pliku setup - pokaż komunikat błędu
+        http_response_code(500);
+        die('
+        <!DOCTYPE html>
+        <html lang="pl">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Shopicker - Błąd konfiguracji</title>
+            <style>
+                * {
+                    box-sizing: border-box;
+                    margin: 0;
+                    padding: 0;
+                }
+                body { 
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+                    display: flex; 
+                    justify-content: center; 
+                    align-items: center; 
+                    min-height: 100vh; 
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    padding: 20px;
+                }
+                .error-box {
+                    background: white;
+                    padding: 40px;
+                    border-radius: 16px;
+                    text-align: center;
+                    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+                    max-width: 600px;
+                    width: 100%;
+                }
+                h1 { 
+                    font-size: 2.5em; 
+                    margin-bottom: 10px;
+                    color: #c62828;
+                }
+                h2 {
+                    font-size: 1.5em;
+                    margin-bottom: 20px;
+                    color: #666;
+                }
+                p {
+                    color: #666;
+                    margin-bottom: 15px;
+                    line-height: 1.6;
+                    text-align: left;
+                }
+                .code-box {
+                    background: #f5f5f5;
+                    border-left: 4px solid #ff6b6b;
+                    padding: 15px;
+                    margin: 20px 0;
+                    text-align: left;
+                    border-radius: 4px;
+                    font-family: monospace;
+                    font-size: 0.9em;
+                }
+                .steps {
+                    background: #fff3e0;
+                    padding: 20px;
+                    border-radius: 8px;
+                    margin: 20px 0;
+                    text-align: left;
+                }
+                .steps ol {
+                    margin: 10px 0 0 20px;
+                }
+                .steps li {
+                    margin: 8px 0;
+                    line-height: 1.6;
+                }
+                strong {
+                    color: #c62828;
+                }
+                a {
+                    color: #2196F3;
+                    text-decoration: none;
+                }
+                a:hover {
+                    text-decoration: underline;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="error-box">
+                <h1>⚠️ Błąd konfiguracji</h1>
+                <h2>Brak wymaganych plików</h2>
+                
+                <div class="code-box">
+                    <strong>Brakujące pliki:</strong><br>
+                    • config.php (konfiguracja)<br>
+                    • generate_hash.php (instalator)
+                </div>
+                
+                <div class="steps">
+                    <strong>🔧 Jak to naprawić:</strong>
+                    <ol>
+                        <li>Wgraj plik <strong>generate_hash.php</strong> do katalogu aplikacji</li>
+                        <li>Odśwież tę stronę</li>
+                        <li>Zostaniesz przekierowany na formularz konfiguracji</li>
+                        <li>Ustaw PIN i gotowe!</li>
+                    </ol>
+                </div>
+                
+                <p style="margin-top: 20px; text-align: center; font-size: 0.9em; color: #999;">
+                    Jeśli problem się powtarza, skontaktuj się z administratorem lub sprawdź 
+                    <a href="https://github.com/Racho4All/shopicker" target="_blank">dokumentację</a>
+                </p>
+            </div>
+        </body>
+        </html>
+        ');
+    }
+}
+// === KONIEC ===
+
+// === AUTENTYKACJA ===
+$config = require $config_file;
+
+if (isset($_POST['pin'])) {
+    if (password_verify($_POST['pin'], $config['pin_hash'])) {
+        $_SESSION['auth'] = true;
+        header('Location: ' . $base_path . '/');
+        exit;
+    } else {
+        $error = true;
+    }
+}
+
+// Wylogowanie (opcjonalne)
+if (isset($_GET['logout'])) {
+    session_destroy();
+    header('Location: ' . $base_path . '/');
+    exit;
+}
+
+if (empty($_SESSION['auth'])) {
+    ?>
+    <!DOCTYPE html>
+    <html lang="pl">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Shopicker - Logowanie</title>
+        <style>
+            * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
+            body { 
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+                display: flex; 
+                justify-content: center; 
+                align-items: center; 
+                min-height: 100vh; 
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                padding: 20px;
+            }
+            .login-box {
+                background: white;
+                padding: 40px;
+                border-radius: 16px;
+                text-align: center;
+                box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+                max-width: 400px;
+                width: 100%;
+            }
+            h1 { 
+                font-size: 2.5em; 
+                margin-bottom: 10px;
+                color: #333;
+            }
+            p {
+                color: #666;
+                margin-bottom: 30px;
+            }
+            input {
+                font-size: 2em;
+                width: 100%;
+                max-width: 200px;
+                padding: 15px;
+                border: 2px solid #ddd;
+                border-radius: 8px;
+                text-align: center;
+                margin: 20px 0;
+                transition: border-color 0.3s ease;
+            }
+            input:focus {
+                outline: none;
+                border-color: #667eea;
+            }
+            button {
+                font-size: 1.2em;
+                padding: 15px 50px;
+                background: #4CAF50;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                cursor: pointer;
+                transition: background 0.2s ease;
+                font-weight: 600;
+            }
+            button:active {
+                background: #45a049;
+                transform: scale(0.98);
+            }
+            .error { 
+                color: #f44336; 
+                margin-top: 15px;
+                font-weight: 500;
+                animation: shake 0.3s ease;
+            }
+            @keyframes shake {
+                0%, 100% { transform: translateX(0); }
+                25% { transform: translateX(-10px); }
+                75% { transform: translateX(10px); }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="login-box">
+            <h1>🛒 Shopicker</h1>
+            <p>Wpisz PIN aby kontynuować</p>
+            <form method="POST">
+                <input type="password" 
+                       name="pin" 
+                       placeholder="••••" 
+                       autofocus 
+                       pattern="[0-9]*" 
+                       inputmode="numeric"
+                       maxlength="6"
+                       autocomplete="off">
+                <br>
+                <button type="submit">Wejdź</button>
+                <?php if (isset($error)): ?>
+                    <div class="error">❌ Nieprawidłowy PIN</div>
+                <?php endif; ?>
+            </form>
+        </div>
+    </body>
+    </html>
+    <?php
+    exit;
+}
+// === KONIEC AUTENTYKACJI ===
 
 header('Cache-Control: no-cache, must-revalidate');
 header('Expires: Mon, 26 Jul 1997 05:00:00 GMT');
@@ -46,6 +312,8 @@ function generuj_id_kotwicy($sklep, $produkt) {
 }
 
 function przekierujZFiltrami() {
+    global $base_path;
+    
     $parametry = [];
     
     if (!empty($_POST['widoczne_sklepy'])) {
@@ -57,7 +325,7 @@ function przekierujZFiltrami() {
     }
     
     $qs = $parametry ? '?' . http_build_query($parametry) : '';
-    header('Location: /shopicker/' . $qs);
+    header('Location: ' . $base_path . '/' . $qs);
     exit();
 }
 
@@ -204,13 +472,13 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
     <meta charset="UTF-8">
     <title>Shopicker - lista zakupów</title>
 
-    <!-- Favicons -->
-    <link rel="icon" type="image/png" href="/shopicker/assets/favicon-96x96.png" sizes="96x96" />
-    <link rel="icon" type="image/svg+xml" href="/shopicker/assets/favicon.svg" />
-    <link rel="shortcut icon" href="/shopicker/assets/favicon.ico" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/shopicker/assets/apple-touch-icon.png" />
-    <meta name="apple-mobile-web-app-title" content="Shopicker" />
-    <link rel="manifest" href="/shopicker/assets/site.webmanifest" />
+	<!-- Favicons -->
+	<link rel="icon" type="image/png" href="<?php echo $base_path; ?>/assets/favicon-96x96.png" sizes="96x96" />
+	<link rel="icon" type="image/svg+xml" href="<?php echo $base_path; ?>/assets/favicon.svg" />
+	<link rel="shortcut icon" href="<?php echo $base_path; ?>/assets/favicon.ico" />
+	<link rel="apple-touch-icon" sizes="180x180" href="<?php echo $base_path; ?>/assets/apple-touch-icon.png" />
+	<meta name="apple-mobile-web-app-title" content="Shopicker" />
+	<link rel="manifest" href="<?php echo $base_path; ?>/assets/site.webmanifest" />
 	
     <!-- FONT LOADING - dodaj tutaj -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -773,11 +1041,11 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
 			<?php endif; ?>
 		</a>		
 		<h1 class="montserrat-logo">
-            <img src="/shopicker/assets/favicon.svg" 
-                 alt="Logo" 
-                 style="height: 1.5em; vertical-align: middle; margin-right: -0.2em">
-            Shopicker
-        </h1>
+			<img src="<?php echo $base_path; ?>/assets/favicon.svg" 
+				 alt="Logo" 
+				 style="height: 1.5em; vertical-align: middle; margin-right: -0.2em">
+			Shopicker
+		</h1>
 		<div class="top-actions">
 			<button class="btn-top btn-toggle" onclick="toggleUkryj()" id="btnToggle">
 				👁️
@@ -785,10 +1053,13 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
 			<button class="btn-top btn-refresh" onclick="odswiezListe()" title="Odśwież listę">
 				🔄
 			</button>
-			<a href="/shopicker/edytuj.php" class="btn-top btn-edit">
+			<a href="<?php echo $base_path; ?>/edytuj.php" class="btn-top btn-edit">
 				✏️
 			</a>
-		</div>		
+			<a href="<?php echo $base_path; ?>/?logout" class="btn-top btn-logout" style="background: #f44336;">
+				🚪
+			</a>
+		</div>
     </div>
 
     <!-- ============================================ -->
@@ -910,13 +1181,15 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
 
     <script>
 
+		// Ścieżka bazowa (z PHP)
+		const BASE_PATH = '<?php echo $base_path; ?>';
+		
 		// Sklepy z produktami do kupienia (z PHP)
-		const SKLEPY_Z_PRODUKTAMI = <?php echo json_encode($sklepy_z_produktami); ?>;	
+		const SKLEPY_Z_PRODUKTAMI = <?php echo json_encode($sklepy_z_produktami); ?>;
 
 		(function() {
 			const pos = sessionStorage.getItem('shoppingList_scrollPos');
 			if (pos) {
-				// Ustaw scroll NATYCHMIAST
 				document.documentElement.scrollTop = parseInt(pos);
 				document.body.scrollTop = parseInt(pos);
 			}
@@ -993,7 +1266,7 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
 			localStorage.setItem(STORAGE_SKLEPY, sklepyParam);
 			
 			// ZAWSZE przekazuj parametr sklepy (nawet pusty)
-			const url = '/shopicker/?sklepy=' + encodeURIComponent(sklepyParam);
+			const url = BASE_PATH + '/?sklepy=' + encodeURIComponent(sklepyParam);
 			sessionStorage.setItem(STORAGE_SCROLL, window.scrollY);
 			window.location.href = url;
 		}
@@ -1052,8 +1325,8 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
 			sessionStorage.setItem(STORAGE_SCROLL, 0);
 			
 			// Przekieruj z parametrem sklepy
-			window.location.href = '/shopicker/?sklepy=' + encodeURIComponent(sklepyParam);
-		}		
+			window.location.href = BASE_PATH + '/?sklepy=' + encodeURIComponent(sklepyParam);
+		}
         
         // ========================================
         // Scroll & animacje
