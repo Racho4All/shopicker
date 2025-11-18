@@ -1,7 +1,7 @@
 <?php
 // ============================================
 // SHOPICKER - Lista zakupów
-// Wersja: 2.1 (ultra-lekka)
+// Wersja: 2.3 (ultra-lekka)
 // ============================================
 
 header('Cache-Control: no-cache, must-revalidate');
@@ -164,6 +164,23 @@ if (isset($_GET['sklepy'])) {
 // STATYSTYKI (lekkie)
 // ============================================
 
+// Najpierw oblicz listę sklepów z produktami (ignorując filtry URL)
+$sklepy_z_produktami = [];
+foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
+    foreach ($produkty_w_sklepie as $item) {
+        $produkt = $item['name'];
+        $ilosc_obecna = isset($aktualne_ilosci[$sklep_nazwa][$produkt]) 
+            ? $aktualne_ilosci[$sklep_nazwa][$produkt] 
+            : null;
+        
+        if ($ilosc_obecna !== null && $ilosc_obecna > 0) {
+            $sklepy_z_produktami[] = $sklep_nazwa;
+            break; // Ten sklep ma już jakiś produkt, przejdź do następnego
+        }
+    }
+}
+
+// Potem zlicz total z uwzględnieniem filtrów
 $do_kupienia_total = 0;
 foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
     if (!empty($filtr_sklepy) && !in_array($sklep_nazwa, $filtr_sklepy)) continue;
@@ -310,6 +327,12 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
 			font-size: 1.1em;
 			white-space: nowrap;
 			order: 1;
+			text-decoration: none;  /* ← DODAJ */
+			transition: transform 0.2s ease;  /* ← DODAJ */
+		}
+
+		.counter-badge:active {  /* ← DODAJ CAŁĄ REGUŁĘ */
+			transform: scale(0.95);
 		}
 
 		.counter-badge.zero {
@@ -739,13 +762,16 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
     <!-- ============================================ -->
     
     <div class="top-bar">
-        <div class="counter-badge <?php echo $do_kupienia_total === 0 ? 'zero' : ''; ?>">
-            <?php if ($do_kupienia_total > 0): ?>
-                🛒 <?php echo $do_kupienia_total; ?>
-            <?php else: ?>
-                ✓ Gotowe!
-            <?php endif; ?>
-        </div>
+		<a href="#" 
+		   onclick="resetSklepy(event)" 
+		   title="Sprawdź" 
+		   class="counter-badge <?php echo $do_kupienia_total === 0 ? 'zero' : ''; ?>">
+			<?php if ($do_kupienia_total > 0): ?>
+				🛒 <?php echo $do_kupienia_total; ?>
+			<?php else: ?>
+				✓ Gotowe!
+			<?php endif; ?>
+		</a>		
 		<h1 class="montserrat-logo">
             <img src="/shopicker/assets/favicon.svg" 
                  alt="Logo" 
@@ -884,6 +910,9 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
 
     <script>
 
+		// Sklepy z produktami do kupienia (z PHP)
+		const SKLEPY_Z_PRODUKTAMI = <?php echo json_encode($sklepy_z_produktami); ?>;	
+
 		(function() {
 			const pos = sessionStorage.getItem('shoppingList_scrollPos');
 			if (pos) {
@@ -1003,6 +1032,28 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
 				saveSklepy();
 			});
 		});
+
+
+		// ========================================
+		// Reset sklepów (badge click)
+		// ========================================
+
+		function resetSklepy(event) {
+			event.preventDefault();
+			
+			// Zaznacz TYLKO sklepy z produktami do kupienia
+			const sklepyParam = SKLEPY_Z_PRODUKTAMI.join(',');
+			localStorage.setItem(STORAGE_SKLEPY, sklepyParam);
+			
+			// Ustaw widok na "ukryte" (tylko potrzebne)
+			localStorage.setItem(STORAGE_HIDE, 'ukryte');
+			
+			// Scroll na górę
+			sessionStorage.setItem(STORAGE_SCROLL, 0);
+			
+			// Przekieruj z parametrem sklepy
+			window.location.href = '/shopicker/?sklepy=' + encodeURIComponent(sklepyParam);
+		}		
         
         // ========================================
         // Scroll & animacje
