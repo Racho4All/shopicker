@@ -1,7 +1,7 @@
 <?php
 // ============================================
 // SHOPICKER - Lista zakupów
-// Wersja: 2.4 (ultra-lekka) + AUTH - poprawiona
+// Wersja: 2.4 + AUTH (poprawiona bezpieczeństwo CSRF/sesja/zapis) inc
 // ============================================
 
 // === AUTO-WYKRYWANIE ŚCIEŻKI ===
@@ -20,6 +20,9 @@ session_set_cookie_params([
     'samesite' => 'Lax'
 ]);
 session_start();
+
+// include security helpers (CSRF + escaping)
+require_once __DIR__ . '/inc/security.php';
 
 // === SPRAWDZENIE KONFIGURACJI ===
 $config_file = __DIR__ . '/config.php';
@@ -153,16 +156,6 @@ if (!file_exists($config_file)) {
 // === AUTENTYKACJA & CSRF & RATE LIMITING ===
 $config = require $config_file;
 
-// Ensure CSRF token exists
-if (empty($_SESSION['csrf_token'])) {
-    try {
-        $_SESSION['csrf_token'] = bin2hex(random_bytes(16));
-    } catch (Exception $e) {
-        // Fallback
-        $_SESSION['csrf_token'] = bin2hex(md5(uniqid('', true)));
-    }
-}
-
 // Basic PIN brute-force protection (session based)
 if (!isset($_SESSION['pin_failed'])) {
     $_SESSION['pin_failed'] = 0;
@@ -177,13 +170,7 @@ if ($_SESSION['pin_failed'] >= 5 && (time() - $_SESSION['pin_last_failed']) < $p
     $pin_blocked = true;
 }
 
-// Helper to validate CSRF token
-function validate_csrf() {
-    if (!isset($_POST['_csrf']) || !isset($_SESSION['csrf_token'])) {
-        return false;
-    }
-    return hash_equals($_SESSION['csrf_token'], (string)$_POST['_csrf']);
-}
+// Helper to validate CSRF token is provided by inc/security.php (validate_csrf, csrf_token, etc.)
 
 // Handle login POST
 if (isset($_POST['pin'])) {
@@ -327,7 +314,7 @@ if (empty($_SESSION['auth'])) {
                        inputmode="numeric"
                        maxlength="6"
                        autocomplete="off">
-                <input type="hidden" name="_csrf" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
+                <input type="hidden" name="_csrf" value="<?php echo h(csrf_token()); ?>">
                 <br>
                 <button type="submit">Wejdź</button>
                 <?php if (isset($error) && $error === 'csrf'): ?>
@@ -369,7 +356,6 @@ function wczytajIlosci($plik) {
 }
 
 function zapiszIlosci($plik, $ilosci) {
-    // Usuń puste sklepy w strukturze
     foreach ($ilosci as $sklep => $produkty) {
         if (empty($produkty)) {
             unset($ilosci[$sklep]);
@@ -579,12 +565,12 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
     <title>Shopicker - lista zakupów</title>
 
 	<!-- Favicons -->
-	<link rel="icon" type="image/png" href="<?php echo htmlspecialchars($base_path); ?>/assets/favicon-96x96.png" sizes="96x96" />
-	<link rel="icon" type="image/svg+xml" href="<?php echo htmlspecialchars($base_path); ?>/assets/favicon.svg" />
-	<link rel="shortcut icon" href="<?php echo htmlspecialchars($base_path); ?>/assets/favicon.ico" />
-	<link rel="apple-touch-icon" sizes="180x180" href="<?php echo htmlspecialchars($base_path); ?>/assets/apple-touch-icon.png" />
+	<link rel="icon" type="image/png" href="<?php echo h($base_path); ?>/assets/favicon-96x96.png" sizes="96x96" />
+	<link rel="icon" type="image/svg+xml" href="<?php echo h($base_path); ?>/assets/favicon.svg" />
+	<link rel="shortcut icon" href="<?php echo h($base_path); ?>/assets/favicon.ico" />
+	<link rel="apple-touch-icon" sizes="180x180" href="<?php echo h($base_path); ?>/assets/apple-touch-icon.png" />
 	<meta name="apple-mobile-web-app-title" content="Shopicker" />
-	<link rel="manifest" href="<?php echo htmlspecialchars($base_path); ?>/assets/site.webmanifest" />
+	<link rel="manifest" href="<?php echo h($base_path); ?>/assets/site.webmanifest" />
 	
     <!-- FONT LOADING - dodaj tutaj -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1127,6 +1113,7 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
         .kupiono-anim {
             animation: kupiono 0.3s ease;
         }
+
     </style>
 </head>
 <body>
@@ -1147,7 +1134,7 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
 			<?php endif; ?>
 		</a>		
 		<h1 class="montserrat-logo">
-			<img src="<?php echo htmlspecialchars($base_path); ?>/assets/favicon.svg" 
+			<img src="<?php echo h($base_path); ?>/assets/favicon.svg" 
 				 alt="Logo" 
 				 style="height: 1.5em; vertical-align: middle; margin-right: -0.2em">
 			Shopicker
@@ -1159,10 +1146,10 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
 			<button class="btn-top btn-refresh" onclick="odswiezListe()" title="Odśwież listę">
 				🔄
 			</button>
-			<a href="<?php echo htmlspecialchars($base_path); ?>/edytuj.php" class="btn-top btn-edit">
+			<a href="<?php echo h($base_path); ?>/edytuj.php" class="btn-top btn-edit">
 				✏️
 			</a>
-			<a href="<?php echo htmlspecialchars($base_path); ?>/?logout" class="btn-top btn-logout" style="background: #f44336;">
+			<a href="<?php echo h($base_path); ?>/?logout" class="btn-top btn-logout" style="background: #f44336;">
 				🚪
 			</a>
 		</div>
@@ -1182,8 +1169,8 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
                 <label class="sklep-chip">
                     <input type="checkbox" 
                            class="checkboxSklep" 
-                           value="<?php echo htmlspecialchars($sklep_nazwa); ?>">
-                    <span><?php echo htmlspecialchars($sklep_nazwa); ?></span>
+                           value="<?php echo h($sklep_nazwa); ?>">
+                    <span><?php echo h($sklep_nazwa); ?></span>
                 </label>
             <?php endforeach; ?>
         </div>
@@ -1221,9 +1208,9 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
         }
         ?>
         
-        <div class="sklep-sekcja" data-sklep="<?php echo htmlspecialchars($sklep_nazwa); ?>">
+        <div class="sklep-sekcja" data-sklep="<?php echo h($sklep_nazwa); ?>">
             <h2 class="sklep-nazwa">
-                <span><?php echo htmlspecialchars($sklep_nazwa); ?></span>
+                <span><?php echo h($sklep_nazwa); ?></span>
                 <?php if ($do_kupienia_sklep > 0): ?>
                     <span class="sklep-counter"><?php echo $do_kupienia_sklep; ?></span>
                 <?php endif; ?>
@@ -1246,18 +1233,18 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
                     $id_elementu = generuj_id_kotwicy($sklep_nazwa, $produkt);
                 ?>
                 
-                <li id="<?php echo htmlspecialchars($id_elementu); ?>" class="<?php echo $klasa_css; ?>">
+                <li id="<?php echo h($id_elementu); ?>" class="<?php echo $klasa_css; ?>">
                     <span class="nazwa-produktu">
-                        <?php echo htmlspecialchars($produkt); ?>
-                        <span class="ilosc-tekst"><?php echo htmlspecialchars($ilosc_tekst); ?></span>
+                        <?php echo h($produkt); ?>
+                        <span class="ilosc-tekst"><?php echo h($ilosc_tekst); ?></span>
                     </span>
                     
-                    <div class="formularz-ilosc" data-ilosc="<?php echo $czy_potrzebny ? htmlspecialchars($ilosc_tekst) : ''; ?>">
+                    <div class="formularz-ilosc" data-ilosc="<?php echo $czy_potrzebny ? h($ilosc_tekst) : ''; ?>">
                         <?php if ($czy_potrzebny): ?>
                             <form method="POST" style="display:inline;" onsubmit="animKupiono(this)">
-                                <input type="hidden" name="produkt" value="<?php echo htmlspecialchars($produkt); ?>">
-                                <input type="hidden" name="sklep" value="<?php echo htmlspecialchars($sklep_nazwa); ?>">
-                                <input type="hidden" name="_csrf" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
+                                <input type="hidden" name="produkt" value="<?php echo h($produkt); ?>">
+                                <input type="hidden" name="sklep" value="<?php echo h($sklep_nazwa); ?>">
+                                <input type="hidden" name="_csrf" value="<?php echo h(csrf_token()); ?>">
                                 <button type="submit" name="oznacz_jako_mam" class="przycisk przycisk-mam">
                                     ✓ Kupione
                                 </button>
@@ -1266,14 +1253,14 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
                             <form method="POST" style="display:inline;" onsubmit="saveScroll()">
                                 <input type="number" 
                                        name="ilosc" 
-                                       value="<?php echo htmlspecialchars($wartosc_input); ?>" 
+                                       value="<?php echo h($wartosc_input); ?>" 
                                        min="0" 
                                        class="wejscie-ilosc"
                                        placeholder="1">
-                                <span class="jednostka-miary"><?php echo htmlspecialchars($jednostka); ?></span>
-                                <input type="hidden" name="produkt" value="<?php echo htmlspecialchars($produkt); ?>">
-                                <input type="hidden" name="sklep" value="<?php echo htmlspecialchars($sklep_nazwa); ?>">
-                                <input type="hidden" name="_csrf" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
+                                <span class="jednostka-miary"><?php echo h($jednostka); ?></span>
+                                <input type="hidden" name="produkt" value="<?php echo h($produkt); ?>">
+                                <input type="hidden" name="sklep" value="<?php echo h($sklep_nazwa); ?>">
+                                <input type="hidden" name="_csrf" value="<?php echo h(csrf_token()); ?>">
                                 <button type="submit" name="ustaw_ilosc" class="przycisk przycisk-zmien">
                                     Kup
                                 </button>
@@ -1293,7 +1280,7 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
 		const BASE_PATH = <?php echo json_encode($base_path); ?>;
 		
 		// Token CSRF z sesji (do addHiddenFields jeśli potrzeba)
-		const CSRF_TOKEN = <?php echo json_encode($_SESSION['csrf_token']); ?>;
+		const CSRF_TOKEN = <?php echo json_encode(csrf_token()); ?>;
 		
 		// Sklepy z produktami do kupienia (z PHP)
 		const SKLEPY_Z_PRODUKTAMI = <?php echo json_encode($sklepy_z_produktami); ?>;

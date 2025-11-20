@@ -1,5 +1,6 @@
 <?php
 // generate_hash.php - AUTOMATYCZNY SETUP
+// Wersja: 2.4 + AUTH (poprawiona bezpieczeństwo CSRF/sesja/zapis) inc
 // Ten plik usunie się sam po wygenerowaniu config.php
 
 // === AUTO-WYKRYWANIE ŚCIEŻKI ===
@@ -18,20 +19,8 @@ session_set_cookie_params([
 ]);
 session_start();
 
-// Prosty limit prób (opcjonalne) - zapobiega masowemu brute-force przy setupie
-if (!isset($_SESSION['setup_failed'])) $_SESSION['setup_failed'] = 0;
-if (!isset($_SESSION['setup_last_failed'])) $_SESSION['setup_last_failed'] = 0;
-$setup_block_seconds = 300; // 5 minut block po kilku nieudanych
-$setup_blocked = ($_SESSION['setup_failed'] >= 10 && (time() - $_SESSION['setup_last_failed']) < $setup_block_seconds);
-
-// Generuj token CSRF
-if (empty($_SESSION['csrf_token_setup'])) {
-    try {
-        $_SESSION['csrf_token_setup'] = bin2hex(random_bytes(16));
-    } catch (Exception $e) {
-        $_SESSION['csrf_token_setup'] = bin2hex(md5(uniqid('', true)));
-    }
-}
+// include shared security helpers (CSRF and escaping)
+require_once __DIR__ . '/inc/security.php';
 
 $config_file = __DIR__ . '/config.php';
 
@@ -44,14 +33,14 @@ if (file_exists($config_file)) {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Shopicker - Setup zakończony</title>
-        <style>body{font-family:sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:linear-gradient(135deg,#4CAF50 0%,#45a049 100%);} .box{background:white;padding:40px;border-radius:16px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.2);max-width:500px;} h1{margin:0 0 20px 0;font-size:2.5em;} p{color:#666;line-height:1.6;} .success{color:#4CAF50;font-weight:600;font-size:1.2em;} a{display:inline-block;margin-top:20px;padding:15px 30px;background:#667eea;color:white;text-decoration:none;border-radius:8px;font-weight:600;}</style>
+        <style>body{font-family:sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:linear-gradient(135deg,#4CAF50 0%,#45a049 100%);} .box{background:white;padding:40px;border-radius:16px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.2);max-width:500px;} h1{margin:0 0 20px 0;font-size:2.5em} p{color:#666;line-height:1.6} .success{color:#4CAF50;font-weight:600;font-size:1.2em} a{display:inline-block;margin-top:20px;padding:15px 30px;background:#667eea;color:white;text-decoration:none;border-radius:8px;font-weight:600;}</style>
     </head>
     <body>
         <div class="box">
             <h1>✅ Setup zakończony</h1>
             <p class="success">Konfiguracja już istnieje!</p>
             <p>Możesz bezpiecznie usunąć ten plik (generate_hash.php)</p>
-            <a href="' . htmlspecialchars($base_path, ENT_QUOTES, 'UTF-8') . '/">Przejdź do Shopicker</a>
+            <a href="' . h($base_path) . '/">Przejdź do Shopicker</a>
         </div>
     </body>
     </html>
@@ -60,16 +49,21 @@ if (file_exists($config_file)) {
 
 // Obsługa formularza
 $errors = [];
+// Simple rate-limiting for setup attempts
+if (!isset($_SESSION['setup_failed'])) $_SESSION['setup_failed'] = 0;
+if (!isset($_SESSION['setup_last_failed'])) $_SESSION['setup_last_failed'] = 0;
+$setup_block_seconds = 300; // 5 minutes
+$setup_blocked = ($_SESSION['setup_failed'] >= 10 && (time() - $_SESSION['setup_last_failed']) < $setup_block_seconds);
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($setup_blocked) {
         $errors[] = 'Zbyt wiele nieudanych prób. Spróbuj ponownie później.';
     } else {
         $pin = $_POST['pin'] ?? '';
         $pin_confirm = $_POST['pin_confirm'] ?? '';
-        $csrf = $_POST['_csrf'] ?? '';
 
         // CSRF validation
-        if (empty($csrf) || !isset($_SESSION['csrf_token_setup']) || !hash_equals($_SESSION['csrf_token_setup'], (string)$csrf)) {
+        if (!validate_csrf()) {
             $errors[] = 'Nieprawidłowy token CSRF.';
         }
 
@@ -88,13 +82,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Generuj hash
             $hash = password_hash($pin, PASSWORD_DEFAULT);
 
-            // Utwórz config.php (zwróć uwagę na bezpieczne wstawienie hasha)
+            // Utwórz config.php (bez define, jako zwracana tablica)
             $config_lines = [];
             $config_lines[] = "<?php";
             $config_lines[] = "// config.php - Wygenerowany automatycznie";
             $config_lines[] = "// Data: " . date('Y-m-d H:i:s');
             $config_lines[] = "";
-            // zapis jako tablica (bez define), proste użycie
             $config_lines[] = "return [";
             $config_lines[] = "    'pin_hash' => '" . str_replace("'", "\\'", $hash) . "'";
             $config_lines[] = "];";
@@ -104,13 +97,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $tmp = $config_file . '.tmp';
             $ok = false;
             if (@file_put_contents($tmp, $config_content, LOCK_EX) !== false) {
-                // Spróbuj ustawić uprawnienia pliku (jeśli host pozwala)
                 @chmod($tmp, 0600);
                 if (@rename($tmp, $config_file)) {
                     @chmod($config_file, 0600);
                     $ok = true;
                 } else {
-                    // fallback write
                     if (@file_put_contents($config_file, $config_content, LOCK_EX) !== false) {
                         @chmod($config_file, 0600);
                         $ok = true;
@@ -156,7 +147,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <p><strong>✓</strong> Ten plik zaraz się usunie</p>
                         </div>
 
-                        <a href="<?php echo htmlspecialchars($base_path, ENT_QUOTES, 'UTF-8'); ?>/">Przejdź do Shopicker 🛒</a>
+                        <a href="<?php echo h($base_path); ?>/">Przejdź do Shopicker 🛒</a>
 
                         <p class="warning">
                             ⚠️ Jeśli plik generate_hash.php nadal istnieje, usuń go ręcznie
@@ -166,22 +157,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <script>
                         // Automatyczne przekierowanie po 5 sekundach
                         setTimeout(() => {
-                            window.location.href = '<?php echo htmlspecialchars($base_path, ENT_QUOTES, 'UTF-8'); ?>/';
+                            window.location.href = '<?php echo h($base_path); ?>/';
                         }, 5000);
                     </script>
                 </body>
                 </html>
                 <?php
-                // Usuń ten plik (jeśli uprawnienia pozwalają)
                 @unlink(__FILE__);
                 exit;
             } else {
-                // increase failed counter if write failed for some reason
                 $_SESSION['setup_failed']++;
                 $_SESSION['setup_last_failed'] = time();
             }
         } else {
-            // increase failed counter on validation failure
             $_SESSION['setup_failed']++;
             $_SESSION['setup_last_failed'] = time();
         }
@@ -230,7 +218,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="errors" role="alert">
                 <ul>
                     <?php foreach ($errors as $error): ?>
-                        <li><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></li>
+                        <li><?php echo h($error); ?></li>
                     <?php endforeach; ?>
                 </ul>
             </div>
@@ -243,7 +231,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php endif; ?>
 
         <form method="POST" autocomplete="off" novalidate>
-            <input type="hidden" name="_csrf" value="<?php echo htmlspecialchars($_SESSION['csrf_token_setup'], ENT_QUOTES, 'UTF-8'); ?>">
+            <input type="hidden" name="_csrf" value="<?php echo h(csrf_token_setup()); ?>">
             <div class="form-group">
                 <label for="pin">PIN (minimum 4 cyfry)</label>
                 <input type="password"

@@ -1,7 +1,7 @@
 <?php
 // ============================================
 // SHOPICKER - Edytor listy produktów
-// Wersja: 2.4 + AUTH (poprawiona bezpieczeństwo CSRF/sesja/zapis)
+// Wersja: 2.4 + AUTH (poprawiona bezpieczeństwo CSRF/sesja/zapis) inc
 // ============================================
 
 // === AUTO-WYKRYWANIE ŚCIEŻKI ===
@@ -19,6 +19,9 @@ session_set_cookie_params([
     'samesite' => 'Lax'
 ]);
 session_start();
+
+// include shared security helpers (CSRF and escaping)
+require_once __DIR__ . '/inc/security.php';
 
 // === SPRAWDZENIE KONFIGURACJI ===
 $config_file = __DIR__ . '/config.php';
@@ -161,23 +164,6 @@ header('Expires: Mon, 26 Jul 1997 05:00:00 GMT');
 
 $plik_konfiguracji = __DIR__ . '/produkty_sklepy.php';
 $wersja_backup = __DIR__ . '/produkty_sklepy_backup_' . date('Y-m-d_His') . '.php';
-
-// ============================================
-// CSRF helper
-// ============================================
-if (empty($_SESSION['csrf_token'])) {
-    try {
-        $_SESSION['csrf_token'] = bin2hex(random_bytes(16));
-    } catch (Exception $e) {
-        $_SESSION['csrf_token'] = bin2hex(md5(uniqid('', true)));
-    }
-}
-function validate_csrf() {
-    if (!isset($_POST['_csrf']) || !isset($_SESSION['csrf_token'])) {
-        return false;
-    }
-    return hash_equals($_SESSION['csrf_token'], (string)$_POST['_csrf']);
-}
 
 // ============================================
 // FUNKCJE POMOCNICZE
@@ -327,7 +313,7 @@ if (!is_array($produkty_sklepy)) {
 <head>
     <meta charset="UTF-8">
     <title>Edycja listy - Shopicker</title>
-    <link rel="icon" type="image/svg+xml" href="<?php echo htmlspecialchars($base_path, ENT_QUOTES, 'UTF-8'); ?>/assets/favicon.svg" />
+    <link rel="icon" type="image/svg+xml" href="<?php echo h($base_path); ?>/assets/favicon.svg" />
 	
     <!-- FONT LOADING -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1312,33 +1298,34 @@ if (!is_array($produkty_sklepy)) {
 			outline: 3px solid var(--primary-color);
 			outline-offset: 2px;
 		}
+
 	</style>
 </head>
 <body>
 
 	<div class="naglowek-kontener">
 		<h1 class="montserrat-logo">
-			<img src="<?php echo htmlspecialchars($base_path, ENT_QUOTES, 'UTF-8'); ?>/assets/favicon.svg" 
+			<img src="<?php echo h($base_path); ?>/assets/favicon.svg" 
 				 alt="Logo" 
 				 style="height: 1.5em; vertical-align: middle; margin-right: -0.2em">
 			Shopicker - Edycja
 		</h1>
 		<div>
-			<a href="<?php echo htmlspecialchars($base_path, ENT_QUOTES, 'UTF-8'); ?>/" class="przycisk-naglowek">← Powrót do listy</a>
+			<a href="<?php echo h($base_path); ?>/" class="przycisk-naglowek">← Powrót do listy</a>
 		</div>
 	</div>
 		
     <div class="edytor-kontener">
 		<?php if ($komunikat): ?>
-			<div class="komunikat <?php echo htmlspecialchars($komunikat_typ, ENT_QUOTES, 'UTF-8'); ?>">
+			<div class="komunikat <?php echo h($komunikat_typ); ?>">
 				<?php if ($komunikat_typ === 'blad'): ?>
-					<?php echo nl2br(htmlspecialchars($komunikat, ENT_QUOTES, 'UTF-8')); ?>
+					<?php echo nl2br(h($komunikat)); ?>
 				<?php else: ?>
-					<?php echo htmlspecialchars($komunikat, ENT_QUOTES, 'UTF-8'); ?>
+					<?php echo h($komunikat); ?>
 				<?php endif; ?>
 				<?php if ($zapisano_pomyslnie): ?>
 					<div style="margin-top: 15px;">
-						<a href="<?php echo htmlspecialchars($base_path, ENT_QUOTES, 'UTF-8'); ?>/" class="btn-powrot-sukces">
+						<a href="<?php echo h($base_path); ?>/" class="btn-powrot-sukces">
 							← Powrót do listy zakupów
 						</a>
 					</div>
@@ -1368,7 +1355,7 @@ if (!is_array($produkty_sklepy)) {
 
         <form method="POST" id="formEdycja">
             <!-- CSRF token -->
-            <input type="hidden" name="_csrf" value="<?php echo htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8'); ?>">
+            <input type="hidden" name="_csrf" value="<?php echo h(csrf_token()); ?>">
 
             <div id="kontenerSklepy">
                 <?php $sklep_index = 0; ?>
@@ -1382,7 +1369,7 @@ if (!is_array($produkty_sklepy)) {
                                   title="Przeciągnij, aby zmienić kolejność">☰</span>
                             <input type="text" 
                                    name="sklepy[<?php echo $sklep_index; ?>][nazwa]" 
-                                   value="<?php echo htmlspecialchars($sklep_nazwa, ENT_QUOTES, 'UTF-8'); ?>"
+                                   value="<?php echo h($sklep_nazwa); ?>"
                                    placeholder="Nazwa sklepu"
                                    required
                                    onclick="event.stopPropagation()"
@@ -1417,14 +1404,14 @@ if (!is_array($produkty_sklepy)) {
                                             <span class="produkt-drag-handle" title="Przeciągnij, aby zmienić kolejność">☰</span>
                                             <input type="text" 
                                                    name="sklepy[<?php echo $sklep_index; ?>][produkty][<?php echo $produkt_index; ?>][name]"
-                                                   value="<?php echo htmlspecialchars($produkt['name'], ENT_QUOTES, 'UTF-8'); ?>"
+                                                   value="<?php echo h($produkt['name']); ?>"
                                                    placeholder="Nazwa produktu"
                                                    required
                                                    oninput="checkDuplicates(this)"
                                                    aria-label="Nazwa produktu">
                                             <input type="text" 
                                                    name="sklepy[<?php echo $sklep_index; ?>][produkty][<?php echo $produkt_index; ?>][unit]"
-                                                   value="<?php echo htmlspecialchars($produkt['unit'], ENT_QUOTES, 'UTF-8'); ?>"
+                                                   value="<?php echo h($produkt['unit']); ?>"
                                                    placeholder="np. kg, szt, l"
                                                    required
                                                    aria-label="Jednostka">
@@ -1453,7 +1440,7 @@ if (!is_array($produkty_sklepy)) {
 
 			<div class="przyciski-akcji">
 				<button type="submit" name="zapisz" class="btn-zapisz">💾 Zapisz zmiany</button>
-				<a href="<?php echo htmlspecialchars($base_path, ENT_QUOTES, 'UTF-8'); ?>/" class="btn-anuluj">❌ Anuluj</a>
+				<a href="<?php echo h($base_path); ?>/" class="btn-anuluj">❌ Anuluj</a>
 			</div>
         </form>
     </div>
@@ -1462,7 +1449,7 @@ if (!is_array($produkty_sklepy)) {
 		// Ścieżka bazowa (z PHP) - bezpiecznie enkodowana
 		const BASE_PATH = <?php echo json_encode($base_path); ?>;
 		// CSRF token (przydatne jeśli trzeba manipulować formularzem przez JS)
-		const CSRF_TOKEN = <?php echo json_encode($_SESSION['csrf_token']); ?>;
+		const CSRF_TOKEN = <?php echo json_encode(csrf_token()); ?>;
 		
 		let sklepCounter = <?php echo (int)$sklep_index; ?>;
 		let draggedElement = null;
