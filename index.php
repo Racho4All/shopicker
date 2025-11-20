@@ -1,13 +1,24 @@
 <?php
 // ============================================
 // SHOPICKER - Lista zakupów
-// Wersja: 2.4 (ultra-lekka) + AUTH
+// Wersja: 2.4 (ultra-lekka) + AUTH - poprawiona
 // ============================================
 
 // === AUTO-WYKRYWANIE ŚCIEŻKI ===
 $base_path = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
 // === KONIEC ===
 
+// === BEZPIECZNE PARAMETRY SESJI ===
+// Ustaw cookie params zanim wywołasz session_start()
+$secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+session_set_cookie_params([
+    'lifetime' => 0,
+    'path' => '/',
+    'domain' => '',
+    'secure' => $secure,
+    'httponly' => true,
+    'samesite' => 'Lax'
+]);
 session_start();
 
 // === SPRAWDZENIE KONFIGURACJI ===
@@ -139,21 +150,81 @@ if (!file_exists($config_file)) {
 }
 // === KONIEC ===
 
-// === AUTENTYKACJA ===
+// === AUTENTYKACJA & CSRF & RATE LIMITING ===
 $config = require $config_file;
 
+// Ensure CSRF token exists
+if (empty($_SESSION['csrf_token'])) {
+    try {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(16));
+    } catch (Exception $e) {
+        // Fallback
+        $_SESSION['csrf_token'] = bin2hex(md5(uniqid('', true)));
+    }
+}
+
+// Basic PIN brute-force protection (session based)
+if (!isset($_SESSION['pin_failed'])) {
+    $_SESSION['pin_failed'] = 0;
+}
+if (!isset($_SESSION['pin_last_failed'])) {
+    $_SESSION['pin_last_failed'] = 0;
+}
+
+$pin_blocked = false;
+$pin_block_seconds = 300; // blokada po >=5 nieudanych na 5 minut
+if ($_SESSION['pin_failed'] >= 5 && (time() - $_SESSION['pin_last_failed']) < $pin_block_seconds) {
+    $pin_blocked = true;
+}
+
+// Helper to validate CSRF token
+function validate_csrf() {
+    if (!isset($_POST['_csrf']) || !isset($_SESSION['csrf_token'])) {
+        return false;
+    }
+    return hash_equals($_SESSION['csrf_token'], (string)$_POST['_csrf']);
+}
+
+// Handle login POST
 if (isset($_POST['pin'])) {
-    if (password_verify($_POST['pin'], $config['pin_hash'])) {
-        $_SESSION['auth'] = true;
-        header('Location: ' . $base_path . '/');
-        exit;
+    // Check CSRF
+    if (!validate_csrf()) {
+        http_response_code(400);
+        $error = 'csrf';
+    } elseif ($pin_blocked) {
+        $error = 'blocked';
     } else {
-        $error = true;
+        // Validate pin - backend validation only
+        $pin_input = (string)$_POST['pin'];
+        if (password_verify($pin_input, $config['pin_hash'])) {
+            // Successful login
+            session_regenerate_id(true);
+            $_SESSION['auth'] = true;
+            // Reset failed attempts
+            $_SESSION['pin_failed'] = 0;
+            $_SESSION['pin_last_failed'] = 0;
+            header('Location: ' . $base_path . '/');
+            exit;
+        } else {
+            // Failed attempt
+            $_SESSION['pin_failed']++;
+            $_SESSION['pin_last_failed'] = time();
+            $error = true;
+        }
     }
 }
 
 // Wylogowanie (opcjonalne)
 if (isset($_GET['logout'])) {
+    // usuń dane sesji
+    $_SESSION = [];
+    if (ini_get("session.use_cookies")) {
+        $params = session_get_cookie_params();
+        setcookie(session_name(), '', time() - 42000,
+            $params["path"], $params["domain"],
+            $params["secure"], $params["httponly"]
+        );
+    }
     session_destroy();
     header('Location: ' . $base_path . '/');
     exit;
@@ -256,9 +327,14 @@ if (empty($_SESSION['auth'])) {
                        inputmode="numeric"
                        maxlength="6"
                        autocomplete="off">
+                <input type="hidden" name="_csrf" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
                 <br>
                 <button type="submit">Wejdź</button>
-                <?php if (isset($error)): ?>
+                <?php if (isset($error) && $error === 'csrf'): ?>
+                    <div class="error">❌ Nieprawidłowy token CSRF</div>
+                <?php elseif (isset($error) && $error === 'blocked'): ?>
+                    <div class="error">❌ Zbyt wiele nieudanych prób. Spróbuj ponownie później.</div>
+                <?php elseif (isset($error) && $error === true): ?>
                     <div class="error">❌ Nieprawidłowy PIN</div>
                 <?php endif; ?>
             </form>
@@ -273,7 +349,8 @@ if (empty($_SESSION['auth'])) {
 header('Cache-Control: no-cache, must-revalidate');
 header('Expires: Mon, 26 Jul 1997 05:00:00 GMT');
 
-$plik_danych = 'statusy_sklepy.txt';
+// Używaj absolutnej ścieżki dla pliku danych
+$plik_danych = __DIR__ . '/statusy_sklepy.txt';
 $produkty_sklepy = require __DIR__ . '/produkty_sklepy.php';
 
 if (!is_array($produkty_sklepy)) {
@@ -286,12 +363,13 @@ if (!is_array($produkty_sklepy)) {
 
 function wczytajIlosci($plik) {
     if (!file_exists($plik)) return [];
-    $json = file_get_contents($plik);
+    $json = @file_get_contents($plik);
     $dane = json_decode($json, true);
     return is_array($dane) ? $dane : [];
 }
 
 function zapiszIlosci($plik, $ilosci) {
+    // Usuń puste sklepy w strukturze
     foreach ($ilosci as $sklep => $produkty) {
         if (empty($produkty)) {
             unset($ilosci[$sklep]);
@@ -304,7 +382,22 @@ function zapiszIlosci($plik, $ilosci) {
         return false;
     }
     
-    return @file_put_contents($plik, $json, LOCK_EX) !== false;
+    // Atomic write: zapisz do pliku tymczasowego, potem rename
+    $tmp = $plik . '.tmp';
+    $written = @file_put_contents($tmp, $json, LOCK_EX);
+    if ($written === false) {
+        error_log('Nie udało się zapisać pliku tymczasowego: ' . $tmp);
+        return false;
+    }
+    if (!@rename($tmp, $plik)) {
+        // Jeśli rename się nie uda, spróbuj bezpiecznego zapisu
+        $result = @file_put_contents($plik, $json, LOCK_EX);
+        if ($result === false) {
+            error_log('Nie udało się zapisać pliku docelowego: ' . $plik);
+            return false;
+        }
+    }
+    return true;
 }
 
 function generuj_id_kotwicy($sklep, $produkt) {
@@ -334,11 +427,18 @@ function przekierujZFiltrami() {
 // ============================================
 
 if (isset($_POST['ustaw_ilosc']) && isset($_POST['produkt']) && isset($_POST['ilosc']) && isset($_POST['sklep'])) {
-    $ilosci_globalne = wczytajIlosci($plik_danych);
-    $produkt = htmlspecialchars($_POST['produkt']);
-    $sklep = htmlspecialchars($_POST['sklep']);
+    // CSRF check
+    if (!validate_csrf()) {
+        http_response_code(400);
+        die('Nieprawidłowy token CSRF');
+    }
     
-    if (trim($_POST['ilosc']) === '') {
+    $ilosci_globalne = wczytajIlosci($plik_danych);
+    // Do logiki używaj surowych wartości (bez htmlspecialchars)
+    $produkt = (string)$_POST['produkt'];
+    $sklep = (string)$_POST['sklep'];
+    
+    if (trim((string)$_POST['ilosc']) === '') {
         $ilosc_input = 1;
     } elseif (is_numeric($_POST['ilosc']) && (int)$_POST['ilosc'] > 0) {
         $ilosc_input = (int)$_POST['ilosc'];
@@ -378,9 +478,15 @@ if (isset($_POST['ustaw_ilosc']) && isset($_POST['produkt']) && isset($_POST['il
 // ============================================
 
 if (isset($_POST['oznacz_jako_mam']) && isset($_POST['produkt']) && isset($_POST['sklep'])) {
+    // CSRF check
+    if (!validate_csrf()) {
+        http_response_code(400);
+        die('Nieprawidłowy token CSRF');
+    }
+    
     $ilosci_globalne = wczytajIlosci($plik_danych);
-    $produkt = htmlspecialchars($_POST['produkt']);
-    $sklep = htmlspecialchars($_POST['sklep']);
+    $produkt = (string)$_POST['produkt'];
+    $sklep = (string)$_POST['sklep'];
     
     $product_exists = false;
     if (isset($produkty_sklepy[$sklep])) {
@@ -473,12 +579,12 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
     <title>Shopicker - lista zakupów</title>
 
 	<!-- Favicons -->
-	<link rel="icon" type="image/png" href="<?php echo $base_path; ?>/assets/favicon-96x96.png" sizes="96x96" />
-	<link rel="icon" type="image/svg+xml" href="<?php echo $base_path; ?>/assets/favicon.svg" />
-	<link rel="shortcut icon" href="<?php echo $base_path; ?>/assets/favicon.ico" />
-	<link rel="apple-touch-icon" sizes="180x180" href="<?php echo $base_path; ?>/assets/apple-touch-icon.png" />
+	<link rel="icon" type="image/png" href="<?php echo htmlspecialchars($base_path); ?>/assets/favicon-96x96.png" sizes="96x96" />
+	<link rel="icon" type="image/svg+xml" href="<?php echo htmlspecialchars($base_path); ?>/assets/favicon.svg" />
+	<link rel="shortcut icon" href="<?php echo htmlspecialchars($base_path); ?>/assets/favicon.ico" />
+	<link rel="apple-touch-icon" sizes="180x180" href="<?php echo htmlspecialchars($base_path); ?>/assets/apple-touch-icon.png" />
 	<meta name="apple-mobile-web-app-title" content="Shopicker" />
-	<link rel="manifest" href="<?php echo $base_path; ?>/assets/site.webmanifest" />
+	<link rel="manifest" href="<?php echo htmlspecialchars($base_path); ?>/assets/site.webmanifest" />
 	
     <!-- FONT LOADING - dodaj tutaj -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1041,7 +1147,7 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
 			<?php endif; ?>
 		</a>		
 		<h1 class="montserrat-logo">
-			<img src="<?php echo $base_path; ?>/assets/favicon.svg" 
+			<img src="<?php echo htmlspecialchars($base_path); ?>/assets/favicon.svg" 
 				 alt="Logo" 
 				 style="height: 1.5em; vertical-align: middle; margin-right: -0.2em">
 			Shopicker
@@ -1053,10 +1159,10 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
 			<button class="btn-top btn-refresh" onclick="odswiezListe()" title="Odśwież listę">
 				🔄
 			</button>
-			<a href="<?php echo $base_path; ?>/edytuj.php" class="btn-top btn-edit">
+			<a href="<?php echo htmlspecialchars($base_path); ?>/edytuj.php" class="btn-top btn-edit">
 				✏️
 			</a>
-			<a href="<?php echo $base_path; ?>/?logout" class="btn-top btn-logout" style="background: #f44336;">
+			<a href="<?php echo htmlspecialchars($base_path); ?>/?logout" class="btn-top btn-logout" style="background: #f44336;">
 				🚪
 			</a>
 		</div>
@@ -1143,7 +1249,7 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
                 <li id="<?php echo htmlspecialchars($id_elementu); ?>" class="<?php echo $klasa_css; ?>">
                     <span class="nazwa-produktu">
                         <?php echo htmlspecialchars($produkt); ?>
-                        <span class="ilosc-tekst"><?php echo $ilosc_tekst; ?></span>
+                        <span class="ilosc-tekst"><?php echo htmlspecialchars($ilosc_tekst); ?></span>
                     </span>
                     
                     <div class="formularz-ilosc" data-ilosc="<?php echo $czy_potrzebny ? htmlspecialchars($ilosc_tekst) : ''; ?>">
@@ -1151,6 +1257,7 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
                             <form method="POST" style="display:inline;" onsubmit="animKupiono(this)">
                                 <input type="hidden" name="produkt" value="<?php echo htmlspecialchars($produkt); ?>">
                                 <input type="hidden" name="sklep" value="<?php echo htmlspecialchars($sklep_nazwa); ?>">
+                                <input type="hidden" name="_csrf" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
                                 <button type="submit" name="oznacz_jako_mam" class="przycisk przycisk-mam">
                                     ✓ Kupione
                                 </button>
@@ -1166,6 +1273,7 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
                                 <span class="jednostka-miary"><?php echo htmlspecialchars($jednostka); ?></span>
                                 <input type="hidden" name="produkt" value="<?php echo htmlspecialchars($produkt); ?>">
                                 <input type="hidden" name="sklep" value="<?php echo htmlspecialchars($sklep_nazwa); ?>">
+                                <input type="hidden" name="_csrf" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
                                 <button type="submit" name="ustaw_ilosc" class="przycisk przycisk-zmien">
                                     Kup
                                 </button>
@@ -1181,8 +1289,11 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
 
     <script>
 
-		// Ścieżka bazowa (z PHP)
-		const BASE_PATH = '<?php echo $base_path; ?>';
+		// Ścieżka bazowa (z PHP) - bezpiecznie enkodowana
+		const BASE_PATH = <?php echo json_encode($base_path); ?>;
+		
+		// Token CSRF z sesji (do addHiddenFields jeśli potrzeba)
+		const CSRF_TOKEN = <?php echo json_encode($_SESSION['csrf_token']); ?>;
 		
 		// Sklepy z produktami do kupienia (z PHP)
 		const SKLEPY_Z_PRODUKTAMI = <?php echo json_encode($sklepy_z_produktami); ?>;
@@ -1364,7 +1475,7 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
         });
         
         // ========================================
-        // Ukryte pola w formularzach
+        // Ukryte pola w formularzach (dodaj widoczne_sklepy i CSRF jeśli nie ma)
         // ========================================
         
         function addHiddenFields() {
@@ -1376,6 +1487,13 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
                     h.name = 'widoczne_sklepy';
                     h.value = sklepy;
                     f.appendChild(h);
+                }
+                if (!f.querySelector('input[name="_csrf"]')) {
+                    const c = document.createElement('input');
+                    c.type = 'hidden';
+                    c.name = '_csrf';
+                    c.value = CSRF_TOKEN || '';
+                    f.appendChild(c);
                 }
             });
         }

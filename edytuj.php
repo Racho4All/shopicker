@@ -1,13 +1,23 @@
 <?php
 // ============================================
 // SHOPICKER - Edytor listy produktów
-// Wersja: 2.4 + AUTH
+// Wersja: 2.4 + AUTH (poprawiona bezpieczeństwo CSRF/sesja/zapis)
 // ============================================
 
 // === AUTO-WYKRYWANIE ŚCIEŻKI ===
 $base_path = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
 // === KONIEC ===
 
+// === BEZPIECZNE PARAMETRY SESJI ===
+$secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+session_set_cookie_params([
+    'lifetime' => 0,
+    'path' => '/',
+    'domain' => '',
+    'secure' => $secure,
+    'httponly' => true,
+    'samesite' => 'Lax'
+]);
 session_start();
 
 // === SPRAWDZENIE KONFIGURACJI ===
@@ -138,19 +148,36 @@ if (!file_exists($config_file)) {
 }
 // === KONIEC ===
 
-// === AUTENTYKACJA ===
+// === AUTH CHECK ===
 if (empty($_SESSION['auth'])) {
     // Nie zalogowany - przekieruj na główną stronę (która wymusi logowanie)
     header('Location: ' . $base_path . '/');
     exit;
 }
-// === KONIEC AUTENTYKACJI ===
+// === KONIEC AUTH ===
 
 header('Cache-Control: no-cache, must-revalidate');
 header('Expires: Mon, 26 Jul 1997 05:00:00 GMT');
 
 $plik_konfiguracji = __DIR__ . '/produkty_sklepy.php';
 $wersja_backup = __DIR__ . '/produkty_sklepy_backup_' . date('Y-m-d_His') . '.php';
+
+// ============================================
+// CSRF helper
+// ============================================
+if (empty($_SESSION['csrf_token'])) {
+    try {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(16));
+    } catch (Exception $e) {
+        $_SESSION['csrf_token'] = bin2hex(md5(uniqid('', true)));
+    }
+}
+function validate_csrf() {
+    if (!isset($_POST['_csrf']) || !isset($_SESSION['csrf_token'])) {
+        return false;
+    }
+    return hash_equals($_SESSION['csrf_token'], (string)$_POST['_csrf']);
+}
 
 // ============================================
 // FUNKCJE POMOCNICZE
@@ -165,16 +192,34 @@ function zapiszKonfiguracje($plik, $dane) {
     $kod_php .= "return [\n";
     
     foreach ($dane as $sklep => $produkty) {
-        $kod_php .= "    '" . addslashes($sklep) . "' => [\n";
+        // Użyj bezpiecznego enkodowania pojedynczych apostrofów
+        $kod_php .= "    '" . str_replace("'", "\\'", $sklep) . "' => [\n";
         foreach ($produkty as $produkt) {
-            $kod_php .= "        ['name' => '" . addslashes($produkt['name']) . "', 'unit' => '" . addslashes($produkt['unit']) . "'],\n";
+            $name = str_replace("'", "\\'", $produkt['name']);
+            $unit = str_replace("'", "\\'", $produkt['unit']);
+            $kod_php .= "        ['name' => '" . $name . "', 'unit' => '" . $unit . "'],\n";
         }
         $kod_php .= "    ],\n\n";
     }
     
     $kod_php .= "];\n";
-    
-    return file_put_contents($plik, $kod_php, LOCK_EX);
+
+    // atomic write: zapisz do tmp, potem rename
+    $tmp = $plik . '.tmp';
+    $written = @file_put_contents($tmp, $kod_php, LOCK_EX);
+    if ($written === false) {
+        error_log("Nie udało się zapisać pliku tymczasowego: $tmp");
+        return false;
+    }
+    if (!@rename($tmp, $plik)) {
+        // fallback
+        $result = @file_put_contents($plik, $kod_php, LOCK_EX);
+        if ($result === false) {
+            error_log("Nie udało się zapisać pliku docelowego: $plik");
+            return false;
+        }
+    }
+    return true;
 }
 
 function walidujDane($post_data) {
@@ -188,17 +233,17 @@ function walidujDane($post_data) {
     foreach ($post_data['sklepy'] as $index => $sklep) {
         $numer = $index + 1;
         
-        if (empty(trim($sklep['nazwa']))) {
+        if (empty(trim((string)$sklep['nazwa']))) {
             $bledy[] = "Sklep #{$numer}: Nazwa sklepu nie może być pusta.";
         }
         
         if (isset($sklep['produkty']) && is_array($sklep['produkty'])) {
             foreach ($sklep['produkty'] as $p_index => $produkt) {
                 $p_numer = $p_index + 1;
-                if (empty(trim($produkt['name']))) {
+                if (empty(trim((string)$produkt['name']))) {
                     $bledy[] = "Sklep '{$sklep['nazwa']}', produkt #{$p_numer}: Nazwa produktu nie może być pusta.";
                 }
-                if (empty(trim($produkt['unit']))) {
+                if (empty(trim((string)$produkt['unit']))) {
                     $bledy[] = "Sklep '{$sklep['nazwa']}', produkt #{$p_numer}: Jednostka nie może być pusta.";
                 }
             }
@@ -211,62 +256,66 @@ function walidujDane($post_data) {
 // ============================================
 // OBSŁUGA ZAPISU
 // ============================================
-
 $komunikat = '';
 $komunikat_typ = '';
 $zapisano_pomyslnie = false;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['zapisz'])) {
-    $bledy = walidujDane($_POST);
-    
-    if (empty($bledy)) {
-        // Utwórz backup
-        if (file_exists($plik_konfiguracji)) {
-            copy($plik_konfiguracji, $wersja_backup);
-        }
+    // CSRF check
+    if (!validate_csrf()) {
+        $komunikat = "Nieprawidłowy token CSRF.";
+        $komunikat_typ = 'blad';
+    } else {
+        $bledy = walidujDane($_POST);
         
-        // Przygotuj dane
-        $nowe_dane = [];
-        foreach ($_POST['sklepy'] as $sklep) {
-            $nazwa_sklepu = trim($sklep['nazwa']);
-            if (empty($nazwa_sklepu)) continue;
+        if (empty($bledy)) {
+            // Utwórz backup jeśli istnieje
+            if (file_exists($plik_konfiguracji)) {
+                @copy($plik_konfiguracji, $wersja_backup);
+            }
             
-            $nowe_dane[$nazwa_sklepu] = [];
-            
-            if (isset($sklep['produkty']) && is_array($sklep['produkty'])) {
-                foreach ($sklep['produkty'] as $produkt) {
-                    $nazwa_produktu = trim($produkt['name']);
-                    $jednostka = trim($produkt['unit']);
-                    
-                    if (!empty($nazwa_produktu) && !empty($jednostka)) {
-                        $nowe_dane[$nazwa_sklepu][] = [
-                            'name' => $nazwa_produktu,
-                            'unit' => $jednostka
-                        ];
+            // Przygotuj dane (używaj surowych wartości do logiki, nie escapuj tutaj)
+            $nowe_dane = [];
+            foreach ($_POST['sklepy'] as $sklep) {
+                $nazwa_sklepu = trim((string)$sklep['nazwa']);
+                if ($nazwa_sklepu === '') continue;
+                
+                $nowe_dane[$nazwa_sklepu] = [];
+                
+                if (isset($sklep['produkty']) && is_array($sklep['produkty'])) {
+                    foreach ($sklep['produkty'] as $produkt) {
+                        $nazwa_produktu = trim((string)$produkt['name']);
+                        $jednostka = trim((string)$produkt['unit']);
+                        
+                        if ($nazwa_produktu !== '' && $jednostka !== '') {
+                            $nowe_dane[$nazwa_sklepu][] = [
+                                'name' => $nazwa_produktu,
+                                'unit' => $jednostka
+                            ];
+                        }
                     }
                 }
             }
-        }
-        
-        // Zapisz
-        if (zapiszKonfiguracje($plik_konfiguracji, $nowe_dane)) {
-            $komunikat = "Zmiany zostały zapisane pomyślnie!";
-            $komunikat_typ = 'sukces';
-            $zapisano_pomyslnie = true;
+            
+            // Zapisz
+            if (zapiszKonfiguracje($plik_konfiguracji, $nowe_dane)) {
+                $komunikat = "Zmiany zostały zapisane pomyślnie!";
+                $komunikat_typ = 'sukces';
+                $zapisano_pomyslnie = true;
+            } else {
+                $komunikat = "Błąd zapisu pliku!";
+                $komunikat_typ = 'blad';
+            }
         } else {
-            $komunikat = "Błąd zapisu pliku!";
+            $komunikat = implode("\n", $bledy);
             $komunikat_typ = 'blad';
         }
-    } else {
-        $komunikat = "Błędy walidacji:<br>" . implode("<br>", $bledy);
-        $komunikat_typ = 'blad';
     }
 }
 
 // ============================================
 // WCZYTANIE AKTUALNYCH DANYCH
 // ============================================
-
 $produkty_sklepy = require $plik_konfiguracji;
 if (!is_array($produkty_sklepy)) {
     die('Błąd: plik produkty_sklepy.php nie zwrócił poprawnej tablicy.');
@@ -278,7 +327,7 @@ if (!is_array($produkty_sklepy)) {
 <head>
     <meta charset="UTF-8">
     <title>Edycja listy - Shopicker</title>
-    <link rel="icon" type="image/svg+xml" href="<?php echo $base_path; ?>/assets/favicon.svg" />
+    <link rel="icon" type="image/svg+xml" href="<?php echo htmlspecialchars($base_path, ENT_QUOTES, 'UTF-8'); ?>/assets/favicon.svg" />
 	
     <!-- FONT LOADING -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1269,23 +1318,27 @@ if (!is_array($produkty_sklepy)) {
 
 	<div class="naglowek-kontener">
 		<h1 class="montserrat-logo">
-			<img src="<?php echo $base_path; ?>/assets/favicon.svg" 
+			<img src="<?php echo htmlspecialchars($base_path, ENT_QUOTES, 'UTF-8'); ?>/assets/favicon.svg" 
 				 alt="Logo" 
 				 style="height: 1.5em; vertical-align: middle; margin-right: -0.2em">
 			Shopicker - Edycja
 		</h1>
 		<div>
-			<a href="<?php echo $base_path; ?>/" class="przycisk-naglowek">← Powrót do listy</a>
+			<a href="<?php echo htmlspecialchars($base_path, ENT_QUOTES, 'UTF-8'); ?>/" class="przycisk-naglowek">← Powrót do listy</a>
 		</div>
 	</div>
 		
     <div class="edytor-kontener">
 		<?php if ($komunikat): ?>
-			<div class="komunikat <?php echo $komunikat_typ; ?>">
-				<?php echo $komunikat; ?>
+			<div class="komunikat <?php echo htmlspecialchars($komunikat_typ, ENT_QUOTES, 'UTF-8'); ?>">
+				<?php if ($komunikat_typ === 'blad'): ?>
+					<?php echo nl2br(htmlspecialchars($komunikat, ENT_QUOTES, 'UTF-8')); ?>
+				<?php else: ?>
+					<?php echo htmlspecialchars($komunikat, ENT_QUOTES, 'UTF-8'); ?>
+				<?php endif; ?>
 				<?php if ($zapisano_pomyslnie): ?>
 					<div style="margin-top: 15px;">
-						<a href="<?php echo $base_path; ?>/" class="btn-powrot-sukces">
+						<a href="<?php echo htmlspecialchars($base_path, ENT_QUOTES, 'UTF-8'); ?>/" class="btn-powrot-sukces">
 							← Powrót do listy zakupów
 						</a>
 					</div>
@@ -1314,6 +1367,9 @@ if (!is_array($produkty_sklepy)) {
         </div>
 
         <form method="POST" id="formEdycja">
+            <!-- CSRF token -->
+            <input type="hidden" name="_csrf" value="<?php echo htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8'); ?>">
+
             <div id="kontenerSklepy">
                 <?php $sklep_index = 0; ?>
                 <?php foreach ($produkty_sklepy as $sklep_nazwa => $produkty): ?>
@@ -1326,7 +1382,7 @@ if (!is_array($produkty_sklepy)) {
                                   title="Przeciągnij, aby zmienić kolejność">☰</span>
                             <input type="text" 
                                    name="sklepy[<?php echo $sklep_index; ?>][nazwa]" 
-                                   value="<?php echo htmlspecialchars($sklep_nazwa); ?>"
+                                   value="<?php echo htmlspecialchars($sklep_nazwa, ENT_QUOTES, 'UTF-8'); ?>"
                                    placeholder="Nazwa sklepu"
                                    required
                                    onclick="event.stopPropagation()"
@@ -1361,14 +1417,14 @@ if (!is_array($produkty_sklepy)) {
                                             <span class="produkt-drag-handle" title="Przeciągnij, aby zmienić kolejność">☰</span>
                                             <input type="text" 
                                                    name="sklepy[<?php echo $sklep_index; ?>][produkty][<?php echo $produkt_index; ?>][name]"
-                                                   value="<?php echo htmlspecialchars($produkt['name']); ?>"
+                                                   value="<?php echo htmlspecialchars($produkt['name'], ENT_QUOTES, 'UTF-8'); ?>"
                                                    placeholder="Nazwa produktu"
                                                    required
                                                    oninput="checkDuplicates(this)"
                                                    aria-label="Nazwa produktu">
                                             <input type="text" 
                                                    name="sklepy[<?php echo $sklep_index; ?>][produkty][<?php echo $produkt_index; ?>][unit]"
-                                                   value="<?php echo htmlspecialchars($produkt['unit']); ?>"
+                                                   value="<?php echo htmlspecialchars($produkt['unit'], ENT_QUOTES, 'UTF-8'); ?>"
                                                    placeholder="np. kg, szt, l"
                                                    required
                                                    aria-label="Jednostka">
@@ -1397,18 +1453,23 @@ if (!is_array($produkty_sklepy)) {
 
 			<div class="przyciski-akcji">
 				<button type="submit" name="zapisz" class="btn-zapisz">💾 Zapisz zmiany</button>
-				<a href="<?php echo $base_path; ?>/" class="btn-anuluj">❌ Anuluj</a>
+				<a href="<?php echo htmlspecialchars($base_path, ENT_QUOTES, 'UTF-8'); ?>/" class="btn-anuluj">❌ Anuluj</a>
 			</div>
         </form>
     </div>
 
 	<script>
-		// Ścieżka bazowa (z PHP)
-		const BASE_PATH = '<?php echo $base_path; ?>';
+		// Ścieżka bazowa (z PHP) - bezpiecznie enkodowana
+		const BASE_PATH = <?php echo json_encode($base_path); ?>;
+		// CSRF token (przydatne jeśli trzeba manipulować formularzem przez JS)
+		const CSRF_TOKEN = <?php echo json_encode($_SESSION['csrf_token']); ?>;
 		
-		let sklepCounter = <?php echo $sklep_index; ?>;
+		let sklepCounter = <?php echo (int)$sklep_index; ?>;
 		let draggedElement = null;
 		let draggedType = null;
+
+		// (JS kod pozostały bez istotnych zmian logicznych; oryginalny kod zachowany)
+		// Pełna sekcja JS została zachowana z oryginalnego pliku, jedynie BASE_PATH i CSRF_TOKEN osadzone bezpiecznie.
 
 		// ========================================
 		// FUZZY DUPLICATE DETECTION
@@ -2027,14 +2088,28 @@ if (!is_array($produkty_sklepy)) {
                 filterSklepy('');
             }
         });
-    </script>
+	</script>
 	
-    <!-- Pływający przycisk zapisz -->
-    <div id="plywajacyPrzycisk" class="plywajacy-zapisz" style="display: none;">
-        <button type="button" onclick="submitFormZPlywajecgo()" class="btn-plywajacy-zapisz" title="Zapisz zmiany (Ctrl+S)">
-            💾 Zapisz zmiany
-        </button>
-    </div>
+	<!-- Pływający przycisk zapisz -->
+	<div id="plywajacyPrzycisk" class="plywajacy-zapisz" style="display: none;">
+	    <button type="button" onclick="submitFormZPlywajecgo()" class="btn-plywajacy-zapisz" title="Zapisz zmiany (Ctrl+S)">
+	        💾 Zapisz zmiany
+	    </button>
+	</div>
+
+    <script>
+        // Dodatkowy helper JS: upewnij się, że formularz zawsze zawiera _csrf (przydatne jeśli ktoś modyfikuje DOM)
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('formEdycja');
+            if (form && !form.querySelector('input[name="_csrf"]')) {
+                const inp = document.createElement('input');
+                inp.type = 'hidden';
+                inp.name = '_csrf';
+                inp.value = CSRF_TOKEN || '';
+                form.appendChild(inp);
+            }
+        });
+    </script>
 
 </body>
 </html>
