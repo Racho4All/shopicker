@@ -1,7 +1,7 @@
 <?php
 // ============================================
 // SHOPICKER - Edytor listy produktów
-// Wersja: 2.4 + AUTH (poprawiona bezpieczeństwo CSRF/sesja/zapis) inc
+// Wersja: 2.4.3
 // ============================================
 
 // === AUTO-WYKRYWANIE ŚCIEŻKI ===

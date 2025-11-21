@@ -1,7 +1,11 @@
 <?php
+// ============================================
+// SHOPICKER - Lista zakupów
 // generate_hash.php - AUTOMATYCZNY SETUP
-// Wersja: 2.4 + AUTH (poprawiona bezpieczeństwo CSRF/sesja/zapis) inc
+// Wersja: 2.4.3
 // Ten plik usunie się sam po wygenerowaniu config.php
+//                       (jeżeli nie - usuń go ręcznie)
+// ============================================
 
 // === AUTO-WYKRYWANIE ŚCIEŻKI ===
 $base_path = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
@@ -231,7 +235,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php endif; ?>
 
         <form method="POST" autocomplete="off" novalidate>
-            <input type="hidden" name="_csrf" value="<?php echo h(csrf_token_setup()); ?>">
+            <input type="hidden" name="_csrf" value="<?php echo h(csrf_token()); ?>">
             <div class="form-group">
                 <label for="pin">PIN (minimum 4 cyfry)</label>
                 <input type="password"
