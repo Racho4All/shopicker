@@ -2,7 +2,7 @@
 // ============================================
 // SHOPICKER - Lista zakupów
 // generate_hash.php - AUTOMATYCZNY SETUP
-// Wersja: 2.4.4 
+// Wersja: 2.4.4
 // Ten plik usunie się sam po wygenerowaniu config.php
 //                       (jeżeli nie - usuń go ręcznie)
 // ============================================
