@@ -1,7 +1,7 @@
 <?php
 // ============================================
 // SHOPICKER - Edytor listy produktów
-// Wersja: 2.4.3
+// Wersja: 2.4.4
 // ============================================
 
 // === AUTO-WYKRYWANIE ŚCIEŻKI ===
@@ -432,6 +432,65 @@ if (!is_array($produkty_sklepy)) {
 		}
 
 		/* ========================================
+		   WSKAŹNIK AKTUALNEGO SKLEPU
+		   ======================================== */
+		
+		#currentShopIndicator {
+			font-size: 1.1em;
+			color: #333;
+			font-weight: 600;
+			transition: var(--transition);
+			opacity: 0;
+			visibility: hidden;
+			min-height: 1.5em;
+			background: rgba(0, 0, 0, 0.08);
+			padding: 8px 16px;
+			border-radius: 20px;
+			display: inline-flex;
+			align-items: center;
+			gap: 8px;
+			white-space: nowrap;
+		}
+		
+		#currentShopIndicator.visible {
+			opacity: 1;
+			visibility: visible;
+		}
+		
+		/* Desktop - tytuł i przycisk w pierwszej linii, sklep w drugiej */
+		@media (min-width: 769px) {
+			.naglowek-kontener h1 {
+				order: 1;
+				flex: 0 0 auto;
+			}
+
+			.naglowek-kontener > div:last-child {
+				order: 2;
+				margin-left: auto;
+			}
+
+			#currentShopIndicator {
+				order: 3;
+				width: 100%;
+				margin-top: 0;
+				margin-left: 0.7em;
+				font-size: 1.3em;
+				text-align: left;
+			}
+		}
+		
+		/* Mobile - pod tytułem */
+		@media (max-width: 768px) {
+			#currentShopIndicator {
+				order: 1;
+				width: 100%;
+				text-align: center;
+				margin-bottom: 8px;
+				font-size: 1.1em;
+			}
+		}
+
+		/* ========================================
 		   EDYTOR - GŁÓWNY KONTENER
 		   ======================================== */
 		
@@ -452,7 +511,7 @@ if (!is_array($produkty_sklepy)) {
 			margin-bottom: 20px;
 			box-shadow: var(--shadow);
 			position: sticky;
-			top: 70px;
+			top: 102px;
 			z-index: 90;
 			display: flex;
 			gap: 12px;
@@ -709,11 +768,16 @@ if (!is_array($produkty_sklepy)) {
 			background: white;
 		}
 		
-		.dodaj-produkt-gora {
+		.dodaj-produkt-dol {
 			background: var(--bg-lighter);
 			border-radius: var(--radius);
 			padding: 12px;
-			margin-bottom: 12px;
+			margin-top: 12px;
+		}
+		
+		/* Ukryj przycisk na dole gdy lista jest pusta (jest info "Brak produktów...") */
+		.pusty-sklep-info ~ .dodaj-produkt-dol {
+			display: none;
 		}
 		
 		.produkty-kontener {
@@ -789,6 +853,16 @@ if (!is_array($produkty_sklepy)) {
 			box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
 		}
 		
+		/* ========================================
+		   PRZYCISKI AKCJI PRODUKTU
+		   ======================================== */
+
+		.produkt-akcje {
+			display: flex;
+			gap: 6px;
+			align-items: center;
+		}
+
 		.btn-usun-produkt {
 			background: var(--danger-bg);
 			color: var(--danger-color);
@@ -799,6 +873,7 @@ if (!is_array($produkty_sklepy)) {
 			font-size: 0.9em;
 			font-weight: 600;
 			transition: var(--transition);
+			white-space: nowrap;
 		}
 		
 		.btn-usun-produkt:hover {
@@ -807,8 +882,31 @@ if (!is_array($produkty_sklepy)) {
 			box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
 			transform: scale(1.05);
 		}
-		
+
 		.btn-usun-produkt:active {
+			transform: scale(0.95);
+		}
+
+		.btn-dodaj-ponizej {
+			background: var(--primary-color);
+			color: white;
+			border: 2px solid var(--primary-color);
+			padding: 8px 12px;
+			border-radius: 4px;
+			cursor: pointer;
+			font-size: 0.9em;
+			font-weight: 600;
+			transition: var(--transition);
+			white-space: nowrap;
+		}
+
+		.btn-dodaj-ponizej:hover {
+			background: var(--primary-hover);
+			box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+			transform: scale(1.05);
+		}
+
+		.btn-dodaj-ponizej:active {
 			transform: scale(0.95);
 		}
 		
@@ -1095,8 +1193,15 @@ if (!is_array($produkty_sklepy)) {
 				margin-bottom: 4px;
 			}
 			
-			.naglowek-kontener > div {
+			#currentShopIndicator {
 				order: 1;
+				width: 100%;
+				text-align: center;
+				margin-bottom: 8px;
+			}
+			
+			.naglowek-kontener > div {
+				order: 2;
 				width: 100%;
 			}
 			
@@ -1216,11 +1321,13 @@ if (!is_array($produkty_sklepy)) {
 				grid-column: 2;
 			}
 			
-			.btn-usun-produkt {
+			.produkt-akcje {
 				grid-column: 1 / 3;
 				width: 100%;
-				padding: 10px;
-				font-size: 1.05em;
+			}
+
+			.produkt-akcje button {
+				flex: 1;
 			}
 			
 			.btn-dodaj {
@@ -1310,6 +1417,9 @@ if (!is_array($produkty_sklepy)) {
 				 style="height: 1.5em; vertical-align: middle; margin-right: -0.2em">
 			Shopicker - Edycja
 		</h1>
+		<div id="currentShopIndicator">
+			<span id="currentShopName"></span> <span class="shop-product-icon">📦</span> <span id="currentShopProductCount"></span>
+		</div>
 		<div>
 			<a href="<?php echo h($base_path); ?>/" class="przycisk-naglowek">← Powrót do listy</a>
 		</div>
@@ -1385,17 +1495,10 @@ if (!is_array($produkty_sklepy)) {
                         </div>
                         
                         <div class="sklep-zawartość">
-                            <!-- DODAJ PRODUKT NA GÓRZE -->
-                            <div class="dodaj-produkt-gora">
-                                <button type="button" class="btn-dodaj" onclick="dodajProdukt(this, true)">
-                                    ➕ Dodaj produkt
-                                </button>
-                            </div>
-                            
                             <div class="produkty-kontener">
                                 <?php if (empty($produkty)): ?>
                                     <div class="pusty-sklep-info">
-                                        Brak produktów. Dodaj pierwszy produkt powyżej.
+                                        Brak produktów. Dodaj pierwszy produkt poniżej.
                                     </div>
                                 <?php else: ?>
                                     <?php $produkt_index = 0; ?>
@@ -1415,11 +1518,21 @@ if (!is_array($produkty_sklepy)) {
                                                    placeholder="np. kg, szt, l"
                                                    required
                                                    aria-label="Jednostka">
-                                            <button type="button" class="btn-usun-produkt" onclick="usunProdukt(this)" title="Usuń produkt">🗑️</button>
+                                            <div class="produkt-akcje">
+												<button type="button" class="btn-usun-produkt" onclick="usunProdukt(this)" title="Usuń produkt">🗑️</button>
+												<button type="button" class="btn-dodaj-ponizej" onclick="dodajProduktPonizej(this)" title="Dodaj produkt poniżej">➕</button>
+											</div>
                                         </div>
                                         <?php $produkt_index++; ?>
                                     <?php endforeach; ?>
                                 <?php endif; ?>
+                            </div>
+                            
+                            <!-- DODAJ PRODUKT NA DOLE -->
+                            <div class="dodaj-produkt-dol">
+                                <button type="button" class="btn-dodaj" onclick="dodajProdukt(this, false)">
+                                    ➕ Dodaj produkt
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -1454,9 +1567,6 @@ if (!is_array($produkty_sklepy)) {
 		let sklepCounter = <?php echo (int)$sklep_index; ?>;
 		let draggedElement = null;
 		let draggedType = null;
-
-		// (JS kod pozostały bez istotnych zmian logicznych; oryginalny kod zachowany)
-		// Pełna sekcja JS została zachowana z oryginalnego pliku, jedynie BASE_PATH i CSRF_TOKEN osadzone bezpiecznie.
 
 		// ========================================
 		// FUZZY DUPLICATE DETECTION
@@ -1831,6 +1941,21 @@ if (!is_array($produkty_sklepy)) {
             if (licznik) {
                 licznik.textContent = iloscProduktow;
             }
+            
+            // Aktualizuj licznik w górnym pasku jeśli to aktualnie widoczny sklep
+            updateCurrentShopProductCount(sklepDiv);
+        }
+
+        function updateCurrentShopProductCount(sklepDiv) {
+            const currentProductCount = document.getElementById('currentShopProductCount');
+            const rect = sklepDiv.getBoundingClientRect();
+            const windowHeight = window.innerHeight;
+            
+            // Sprawdź czy ten sklep jest w centrum ekranu
+            if (rect.top < windowHeight / 2 && rect.bottom > windowHeight / 2) {
+                const produktyCount = sklepDiv.querySelectorAll('.produkt-edytor').length;
+                currentProductCount.textContent = produktyCount;
+            }
         }
 
         // ========================================
@@ -1866,16 +1991,16 @@ if (!is_array($produkty_sklepy)) {
                     </div>
                     
                     <div class="sklep-zawartość">
-                        <div class="dodaj-produkt-gora">
-                            <button type="button" class="btn-dodaj" onclick="dodajProdukt(this, true)">
-                                ➕ Dodaj produkt
-                            </button>
-                        </div>
-                        
                         <div class="produkty-kontener">
                             <div class="pusty-sklep-info">
-                                Brak produktów. Dodaj pierwszy produkt powyżej.
+                                Brak produktów. Dodaj pierwszy produkt poniżej.
                             </div>
+                        </div>
+                        
+                        <div class="dodaj-produkt-dol">
+                            <button type="button" class="btn-dodaj" onclick="dodajProdukt(this, false)">
+                                ➕ Dodaj produkt
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -1919,9 +2044,12 @@ if (!is_array($produkty_sklepy)) {
                            placeholder="np. kg, szt, l"
                            required
                            aria-label="Jednostka">
-                    <button type="button" class="btn-usun-produkt" onclick="usunProdukt(this)" title="Usuń produkt">🗑️</button>
+                    <div class="produkt-akcje">
+                        <button type="button" class="btn-usun-produkt" onclick="usunProdukt(this)" title="Usuń produkt">🗑️</button>
+                        <button type="button" class="btn-dodaj-ponizej" onclick="dodajProduktPonizej(this)" title="Dodaj produkt poniżej">➕</button>
+                    </div>
                 </div>
-            `;
+`;
             
             if (naGorze) {
                 produktyKontener.insertAdjacentHTML('afterbegin', produktHTML);
@@ -1939,6 +2067,50 @@ if (!is_array($produkty_sklepy)) {
             }, 100);
         }
 
+		function dodajProduktPonizej(button) {
+			const produktDiv = button.closest('.produkt-edytor');
+			const sklepDiv = produktDiv.closest('.sklep-edytor');
+			const sklepIndex = sklepDiv.dataset.sklepIndex;
+			const produktyKontener = sklepDiv.querySelector('.produkty-kontener');
+			
+			const aktualnaIlosc = produktyKontener.querySelectorAll('.produkt-edytor').length;
+			
+			const produktHTML = `
+				<div class="produkt-edytor" draggable="true">
+					<span class="produkt-drag-handle" title="Przeciągnij, aby zmienić kolejność">☰</span>
+					<input type="text" 
+						   name="sklepy[${sklepIndex}][produkty][${aktualnaIlosc}][name]"
+						   placeholder="Nazwa produktu"
+						   required
+						   oninput="checkDuplicates(this)"
+						   aria-label="Nazwa produktu">
+					<input type="text" 
+						   name="sklepy[${sklepIndex}][produkty][${aktualnaIlosc}][unit]"
+						   placeholder="np. kg, szt, l"
+						   required
+						   aria-label="Jednostka">
+					<div class="produkt-akcje">
+						<button type="button" class="btn-usun-produkt" onclick="usunProdukt(this)" title="Usuń produkt">🗑️</button>
+						<button type="button" class="btn-dodaj-ponizej" onclick="dodajProduktPonizej(this)" title="Dodaj produkt poniżej">➕</button>
+					</div>
+				</div>
+			`;
+			
+			// Wstaw nowy produkt bezpośrednio po aktualnym
+			produktDiv.insertAdjacentHTML('afterend', produktHTML);
+			
+			setupProduktDragAndDrop();
+			aktualizujIndeksyProduktow(sklepDiv, sklepIndex);
+			formZmieniony = true;
+			
+			// Focus na nowym produkcie
+			setTimeout(() => {
+				const nowyProdukt = produktDiv.nextElementSibling;
+				nowyProdukt.scrollIntoView({ behavior: 'smooth', block: 'center' });
+				nowyProdukt.querySelector('input').focus();
+			}, 100);
+		}
+
         function usunProdukt(button) {
             if (confirm('Czy na pewno usunąć ten produkt?')) {
                 const produktDiv = button.closest('.produkt-edytor');
@@ -1950,7 +2122,7 @@ if (!is_array($produkty_sklepy)) {
                 aktualizujIndeksyProduktow(sklepDiv, sklepIndex);
                 
                 if (produktyKontener.querySelectorAll('.produkt-edytor').length === 0) {
-                    produktyKontener.innerHTML = '<div class="pusty-sklep-info">Brak produktów. Dodaj pierwszy produkt powyżej.</div>';
+                    produktyKontener.innerHTML = '<div class="pusty-sklep-info">Brak produktów. Dodaj pierwszy produkt poniżej.</div>';
                     aktualizujLicznikProduktow(sklepDiv);
                 }
                 
@@ -2004,6 +2176,96 @@ if (!is_array($produkty_sklepy)) {
         }
 
         // ========================================
+        // WSKAŹNIK AKTUALNEGO SKLEPU
+        // ========================================
+
+        function updateCurrentShopIndicator() {
+            const currentShopName = document.getElementById('currentShopName');
+            const currentProductCount = document.getElementById('currentShopProductCount');
+            
+            // Intersection Observer do śledzenia który sklep jest w centrum
+            const observerOptions = {
+                root: null,
+                rootMargin: '-50% 0px -50% 0px', // Centrum viewport
+                threshold: 0
+            };
+
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const shopInput = entry.target.querySelector('.sklep-naglowek input[type="text"]');
+                        const productCountEl = entry.target.querySelector('.liczba-produktow');
+                        
+                        if (shopInput) {
+                            const shopName = shopInput.value.trim();
+                            const productCount = productCountEl ? productCountEl.textContent : '0';
+                            const indicator = document.getElementById('currentShopIndicator');
+                            
+                            // Pokaż tylko jeśli jest nazwa sklepu
+                            if (shopName) {
+                                currentShopName.textContent = shopName;
+                                currentProductCount.textContent = productCount;
+                                indicator.classList.add('visible');
+                                
+                                // Delikatna animacja
+                                indicator.style.transform = 'scale(1.05)';
+                                setTimeout(() => {
+                                    indicator.style.transform = 'scale(1)';
+                                }, 200);
+                            } else {
+                                indicator.classList.remove('visible');
+                            }
+                        }
+                    } else {
+                        // Gdy sklep opuszcza centrum, ukryj wskaźnik
+                        const indicator = document.getElementById('currentShopIndicator');
+                        const allIntersecting = Array.from(document.querySelectorAll('.sklep-edytor')).some(shop => {
+                            const rect = shop.getBoundingClientRect();
+                            const windowHeight = window.innerHeight;
+                            return rect.top < windowHeight / 2 && rect.bottom > windowHeight / 2;
+                        });
+                        
+                        if (!allIntersecting) {
+                            indicator.classList.remove('visible');
+                        }
+                    }
+                });
+            }, observerOptions);
+
+            // Obserwuj wszystkie sklepy
+            document.querySelectorAll('.sklep-edytor').forEach(shop => {
+                observer.observe(shop);
+            });
+
+            // Aktualizuj gdy zmieniamy nazwę sklepu
+            document.addEventListener('input', (e) => {
+                if (e.target.matches('.sklep-naglowek input[type="text"]')) {
+                    const shop = e.target.closest('.sklep-edytor');
+                    const rect = shop.getBoundingClientRect();
+                    const windowHeight = window.innerHeight;
+                    
+                    // Sprawdź czy ten sklep jest w centrum
+                    if (rect.top < windowHeight / 2 && rect.bottom > windowHeight / 2) {
+                        const shopName = e.target.value.trim() || 'Nowy sklep';
+                        currentShopName.textContent = shopName;
+                    }
+                }
+            });
+
+            // Re-obserwuj gdy sklepy są dodawane/usuwane
+            const containerObserver = new MutationObserver(() => {
+                observer.disconnect();
+                document.querySelectorAll('.sklep-edytor').forEach(shop => {
+                    observer.observe(shop);
+                });
+            });
+
+            containerObserver.observe(document.getElementById('kontenerSklepy'), {
+                childList: true
+            });
+        }
+
+        // ========================================
         // INICJALIZACJA
         // ========================================
 
@@ -2013,6 +2275,7 @@ if (!is_array($produkty_sklepy)) {
             setupSklepDragAndDrop();
             setupProduktDragAndDrop();
             restoreCollapsedStates();
+            updateCurrentShopIndicator();
 
             plywajacyPrzyciskElement = document.getElementById('plywajacyPrzycisk');
             
