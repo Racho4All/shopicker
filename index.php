@@ -1,7 +1,7 @@
 <?php
 // ============================================
 // SHOPICKER - Lista zakupów
-// Wersja: 2.4.3
+// Wersja: 2.4.4
 // ============================================
 
 // === AUTO-WYKRYWANIE ŚCIEŻKI ===
@@ -574,6 +574,7 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
 }
 
 ?>
+<!DOCTYPE html>
 <html lang="pl">
 <head>
     <meta charset="UTF-8">
@@ -702,11 +703,11 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
 			font-size: 1.1em;
 			white-space: nowrap;
 			order: 1;
-			text-decoration: none;  /* ← DODAJ */
-			transition: transform 0.2s ease;  /* ← DODAJ */
+			text-decoration: none;
+			transition: transform 0.2s ease;
 		}
 
-		.counter-badge:active {  /* ← DODAJ CAŁĄ REGUŁĘ */
+		.counter-badge:active {
 			transform: scale(0.95);
 		}
 
@@ -1161,10 +1162,10 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
 			<button class="btn-top btn-refresh" onclick="odswiezListe()" title="Odśwież listę">
 				🔄
 			</button>
-			<a href="<?php echo h($base_path); ?>/edytuj.php" class="btn-top btn-edit">
+			<a href="<?php echo h($base_path); ?>/edytuj.php" class="btn-top btn-edit" title="Edytuj listę produktów">
 				✏️
 			</a>
-			<a href="<?php echo h($base_path); ?>/?logout" class="btn-top btn-logout" style="background: #f44336;">
+			<a href="<?php echo h($base_path); ?>/?logout" class="btn-top btn-logout" style="background: #f44336;" title="Wyloguj">
 				🚪
 			</a>
 		</div>
@@ -1181,8 +1182,9 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
         </div>
         <div class="sklepy-grid">
             <?php foreach (array_keys($produkty_sklepy) as $sklep_nazwa): ?>
-                <label class="sklep-chip">
+                <label class="sklep-chip" for="sklep_<?php echo h(urlencode($sklep_nazwa)); ?>">
                     <input type="checkbox" 
+                           id="sklep_<?php echo h(urlencode($sklep_nazwa)); ?>"
                            class="checkboxSklep" 
                            value="<?php echo h($sklep_nazwa); ?>">
                     <span><?php echo h($sklep_nazwa); ?></span>
@@ -1332,6 +1334,7 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
             
             localStorage.setItem(STORAGE_HIDE, anyVisible ? 'ukryte' : 'pokazane');
             ukryjPusteSklepy();
+            updateToggleIcon();
         }
         
         function ukryjPusteSklepy() {
@@ -1339,6 +1342,27 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
                 const widoczne = sekcja.querySelectorAll('li:not(.ukryty)');
                 sekcja.classList.toggle('ukryty', widoczne.length === 0);
             });
+        }
+        
+        // ========================================
+        // Aktualizacja ikony Toggle
+        // ========================================
+        
+        function updateToggleIcon() {
+            const btn = document.getElementById('btnToggle');
+            if (!btn) return;
+            
+            const hideState = localStorage.getItem(STORAGE_HIDE);
+            
+            if (hideState === 'ukryte') {
+                // Kupione są ukryte → pokaż "oko" i title "Pokaż wszystkie"
+                btn.textContent = '👁️';
+                btn.title = 'Pokaż wszystkie';
+            } else {
+                // Wszystko widoczne → pokaż "koszyk" i title "Tylko koszyk"
+                btn.textContent = '🛒';
+                btn.title = 'Tylko koszyk';
+            }
         }
         
 		// ========================================
@@ -1367,7 +1391,7 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
 				}
 			}
 			
-			updateToggleButton();
+			updateShopsToggleButton();
 		}
 
 		function saveSklepy() {
@@ -1395,7 +1419,7 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
 				checkboxes.forEach(ch => ch.checked = true);
 			}
 			
-			updateToggleButton();
+			updateShopsToggleButton();
 			saveSklepy();
 		}
 		
@@ -1404,7 +1428,7 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
 			location.reload();
 		}		
 
-		function updateToggleButton() {
+		function updateShopsToggleButton() {
 			const btnToggle = document.querySelector('.btn-all-shops');
 			if (!btnToggle) return;
 			
@@ -1414,7 +1438,7 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
 
 		checkboxes.forEach(ch => {
 			ch.addEventListener('change', () => {
-				updateToggleButton();
+				updateShopsToggleButton();
 				saveSklepy();
 			});
 		});
@@ -1512,6 +1536,7 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
                 document.querySelectorAll('.status-have').forEach(el => el.classList.add('ukryty'));
             }
             ukryjPusteSklepy();
+            updateToggleIcon();
             
             addHiddenFields();
             restoreScroll();

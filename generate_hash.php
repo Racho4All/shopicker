@@ -2,7 +2,7 @@
 // ============================================
 // SHOPICKER - Lista zakupów
 // generate_hash.php - AUTOMATYCZNY SETUP
-// Wersja: 2.4.3
+// Wersja: 2.4.4 
 // Ten plik usunie się sam po wygenerowaniu config.php
 //                       (jeżeli nie - usuń go ręcznie)
 // ============================================
@@ -37,7 +37,7 @@ if (file_exists($config_file)) {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Shopicker - Setup zakończony</title>
-        <style>body{font-family:sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:linear-gradient(135deg,#4CAF50 0%,#45a049 100%);} .box{background:white;padding:40px;border-radius:16px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.2);max-width:500px;} h1{margin:0 0 20px 0;font-size:2.5em} p{color:#666;line-height:1.6} .success{color:#4CAF50;font-weight:600;font-size:1.2em} a{display:inline-block;margin-top:20px;padding:15px 30px;background:#667eea;color:white;text-decoration:none;border-radius:8px;font-weight:600;}</style>
+        <style>body{font-family:sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:linear-gradient(135deg,#4CAF50 0%,#45a049 100%);} .box{background:white;padding:40px;border-radius:16px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.2);max-width:500px;} h1{margin:0 0 20px 0;font-size:2.5em} p{color:#666;line-height:1.6} .success{color:#4CAF50;font-weight:600;font-size:1.2em} a{display:inline-block;margin-top:20px;padding:15px 30px;background:#667eea;color:white;text-decoration:none;border-radius:8px;font-weight:600;transition:all 0.2s ease} a:hover{background:#5568d3;transform:translateY(-2px);box-shadow:0 4px 12px rgba(102,126,234,0.4)} a:active{transform:translateY(0);box-shadow:0 2px 4px rgba(102,126,234,0.3)}</style>
     </head>
     <body>
         <div class="box">
@@ -136,7 +136,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         .info{background:#f5f5f5;padding:20px;border-radius:8px;margin:20px 0;text-align:left}
                         .info strong{color:#667eea}
                         code{background:#ffe0b2;padding:2px 8px;border-radius:4px;font-family:monospace}
-                        a{display:inline-block;margin-top:20px;padding:15px 40px;background:#667eea;color:white;text-decoration:none;border-radius:8px;font-weight:600;font-size:1.1em}
+                        a{display:inline-block;margin-top:20px;padding:15px 40px;background:#667eea;color:white;text-decoration:none;border-radius:8px;font-weight:600;font-size:1.1em;transition:all 0.2s ease}
+                        a:hover{background:#5568d3;transform:translateY(-2px);box-shadow:0 4px 12px rgba(102,126,234,0.4)}
+                        a:active{transform:translateY(0);box-shadow:0 2px 4px rgba(102,126,234,0.3)}
                         .warning{color:#ff9800;font-size:0.9em;margin-top:15px}
                     </style>
                 </head>
@@ -157,13 +159,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             ⚠️ Jeśli plik generate_hash.php nadal istnieje, usuń go ręcznie
                         </p>
                     </div>
-
-                    <script>
-                        // Automatyczne przekierowanie po 5 sekundach
-                        setTimeout(() => {
-                            window.location.href = '<?php echo h($base_path); ?>/';
-                        }, 5000);
-                    </script>
                 </body>
                 </html>
                 <?php
@@ -196,9 +191,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .subtitle{color:#666;text-align:center;margin-bottom:30px;line-height:1.5}
         .form-group{margin-bottom:20px}
         label{display:block;margin-bottom:8px;font-weight:600;color:#333}
-        input[type="password"],input[type="text"]{font-size:1.5em;width:100%;padding:15px;border:2px solid #ddd;border-radius:8px;text-align:center;transition:border-color .3s}
+        .input-wrapper{display:flex;gap:10px;align-items:center;justify-content:center;max-width:400px;margin:0 auto}
+        input[type="password"],input[type="text"]{font-size:1.5em;flex:1;min-width:0;padding:15px;border:2px solid #ddd;border-radius:8px;text-align:center;transition:border-color .3s}
         input:focus{outline:none;border-color:#667eea}
-        button{font-size:1.2em;padding:15px;background:#4CAF50;color:white;border:none;border-radius:8px;cursor:pointer;transition:background .2s;font-weight:600;width:100%;margin-top:10px}
+        input.valid{border-color:#4CAF50}
+        input.invalid{border-color:#f44336}
+        .toggle-pin{background:none;border:none;cursor:pointer;font-size:1.5em;padding:10px;opacity:0.6;transition:opacity 0.2s;flex-shrink:0;width:50px;align-self:center;line-height:1;display:flex;align-items:center;justify-content:center}
+        .toggle-pin:hover{opacity:1}
+        .hint{font-size:0.85em;color:#666;margin-top:6px;font-style:italic}
+        .validation-message{font-size:0.9em;margin-top:6px;font-weight:500;display:flex;align-items:center;gap:5px}
+        .validation-message.success{color:#4CAF50}
+        .validation-message.error{color:#f44336}
+        button{font-size:1.2em;padding:15px;background:#4CAF50;color:white;border:none;border-radius:8px;cursor:pointer;transition:all .2s;font-weight:600;width:100%;margin-top:10px}
+        button:hover{background:#45a049;transform:translateY(-2px);box-shadow:0 4px 12px rgba(76,175,80,0.3)}
+        button:active{transform:translateY(0);box-shadow:0 2px 4px rgba(76,175,80,0.2)}
+        button:disabled{background:#ccc;cursor:not-allowed;opacity:0.6}
+        button:disabled:hover{transform:none;box-shadow:none}
         .errors{background:#ffebee;color:#c62828;padding:15px;border-radius:8px;margin-bottom:20px;border-left:4px solid #c62828}
         .errors ul{list-style:none;padding:0}
         .errors li{padding:5px 0}
@@ -234,36 +242,139 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
         <?php endif; ?>
 
-        <form method="POST" autocomplete="off" novalidate>
+        <form method="POST" autocomplete="off" novalidate id="setupForm">
             <input type="hidden" name="_csrf" value="<?php echo h(csrf_token()); ?>">
+            
             <div class="form-group">
                 <label for="pin">PIN (minimum 4 cyfry)</label>
-                <input type="password"
-                       id="pin"
-                       name="pin"
-                       placeholder="••••"
-                       autofocus
-                       pattern="[0-9]*"
-                       inputmode="numeric"
-                       autocomplete="off"
-                       required>
+                <div class="input-wrapper">
+                    <input type="password"
+                           id="pin"
+                           name="pin"
+                           placeholder="••••"
+                           autofocus
+                           pattern="[0-9]*"
+                           inputmode="numeric"
+                           autocomplete="off"
+                           minlength="4"
+                           required>
+                    <button type="button" class="toggle-pin" onclick="togglePin('pin')" title="Pokaż/Ukryj PIN">👁️</button>
+                </div>
                 <div class="hint">Zapamiętaj ten PIN - będzie potrzebny do logowania</div>
             </div>
 
             <div class="form-group">
                 <label for="pin_confirm">Potwierdź PIN</label>
-                <input type="password"
-                       id="pin_confirm"
-                       name="pin_confirm"
-                       placeholder="••••"
-                       pattern="[0-9]*"
-                       inputmode="numeric"
-                       autocomplete="off"
-                       required>
+                <div class="input-wrapper">
+                    <input type="password"
+                           id="pin_confirm"
+                           name="pin_confirm"
+                           placeholder="••••"
+                           pattern="[0-9]*"
+                           inputmode="numeric"
+                           autocomplete="off"
+                           minlength="4"
+                           required>
+                    <button type="button" class="toggle-pin" onclick="togglePin('pin_confirm')" title="Pokaż/Ukryj PIN">👁️</button>
+                </div>
+                <div id="validationMessage"></div>
             </div>
 
-            <button type="submit" <?php echo $setup_blocked ? 'disabled' : ''; ?>>🚀 Wygeneruj konfigurację</button>
+            <button type="submit" id="submitBtn" <?php echo $setup_blocked ? 'disabled' : ''; ?>>🚀 Wygeneruj konfigurację</button>
         </form>
     </div>
+
+    <script>
+        const pinInput = document.getElementById('pin');
+        const pinConfirmInput = document.getElementById('pin_confirm');
+        const validationMessage = document.getElementById('validationMessage');
+        const submitBtn = document.getElementById('submitBtn');
+
+        // Toggle pokazywania/ukrywania PINu
+        function togglePin(inputId) {
+            const input = document.getElementById(inputId);
+            if (input.type === 'password') {
+                input.type = 'text';
+            } else {
+                input.type = 'password';
+            }
+        }
+
+        // Live walidacja
+        function validatePins() {
+            const pin = pinInput.value;
+            const pinConfirm = pinConfirmInput.value;
+
+            // Wyczyść poprzednie stany
+            pinInput.classList.remove('valid', 'invalid');
+            pinConfirmInput.classList.remove('valid', 'invalid');
+            validationMessage.innerHTML = '';
+
+            // Jeśli oba puste, nie pokazuj komunikatu
+            if (!pin && !pinConfirm) {
+                return;
+            }
+
+            // Sprawdź długość PIN
+            if (pin && pin.length < 4) {
+                pinInput.classList.add('invalid');
+                validationMessage.innerHTML = '<span class="validation-message error">❌ PIN musi mieć minimum 4 cyfry</span>';
+                return;
+            }
+
+            // Sprawdź czy PIN zawiera tylko cyfry
+            if (pin && !/^[0-9]+$/.test(pin)) {
+                pinInput.classList.add('invalid');
+                validationMessage.innerHTML = '<span class="validation-message error">❌ PIN może zawierać tylko cyfry</span>';
+                return;
+            }
+
+            // Jeśli PIN OK i nie ma potwierdzenia, nie pokazuj błędu
+            if (pin && pin.length >= 4 && !pinConfirm) {
+                pinInput.classList.add('valid');
+                return;
+            }
+
+            // Porównaj PINy
+            if (pin && pinConfirm) {
+                if (pin === pinConfirm) {
+                    pinInput.classList.add('valid');
+                    pinConfirmInput.classList.add('valid');
+                    validationMessage.innerHTML = '<span class="validation-message success">✓ PINy są identyczne</span>';
+                } else {
+                    pinConfirmInput.classList.add('invalid');
+                    validationMessage.innerHTML = '<span class="validation-message error">❌ PINy nie są identyczne</span>';
+                }
+            }
+        }
+
+        // Dodaj listenery
+        pinInput.addEventListener('input', validatePins);
+        pinConfirmInput.addEventListener('input', validatePins);
+
+        // Walidacja przed submitem
+        document.getElementById('setupForm').addEventListener('submit', function(e) {
+            const pin = pinInput.value;
+            const pinConfirm = pinConfirmInput.value;
+
+            if (pin.length < 4) {
+                e.preventDefault();
+                alert('PIN musi mieć minimum 4 cyfry');
+                return false;
+            }
+
+            if (!/^[0-9]+$/.test(pin)) {
+                e.preventDefault();
+                alert('PIN może zawierać tylko cyfry');
+                return false;
+            }
+
+            if (pin !== pinConfirm) {
+                e.preventDefault();
+                alert('PIN i potwierdzenie nie są identyczne');
+                return false;
+            }
+        });
+    </script>
 </body>
 </html>
