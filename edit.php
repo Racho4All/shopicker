@@ -1,14 +1,14 @@
 <?php
 // ============================================
-// SHOPICKER - Edytor listy produktów
-// Wersja: 2.4.4
+// SHOPICKER - Edytor listy produktów / Product List Editor
+// Wersja / Version: 2.5.0
 // ============================================
 
-// === AUTO-WYKRYWANIE ŚCIEŻKI ===
+// === AUTO-WYKRYWANIE ŚCIEŻKI / AUTO-DETECT PATH ===
 $base_path = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
-// === KONIEC ===
+// === KONIEC / END ===
 
-// === BEZPIECZNE PARAMETRY SESJI ===
+// === BEZPIECZNE PARAMETRY SESJI / SECURE SESSION PARAMS ===
 $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
 session_set_cookie_params([
     'lifetime' => 0,
@@ -20,29 +20,33 @@ session_set_cookie_params([
 ]);
 session_start();
 
-// include shared security helpers (CSRF and escaping)
+// Dołącz helpery bezpieczeństwa i i18n / Include security helpers and i18n
 require_once __DIR__ . '/inc/security.php';
+require_once __DIR__ . '/inc/i18n.php';
 
-// === SPRAWDZENIE KONFIGURACJI ===
+// Zainicjalizuj system tłumaczeń / Initialize translation system
+initI18n();
+
+// === SPRAWDZENIE KONFIGURACJI / CONFIG CHECK ===
 $config_file = __DIR__ . '/config.php';
 $setup_file = __DIR__ . '/generate_hash.php';
 
 if (!file_exists($config_file)) {
-    // Brak konfiguracji
+    // Brak konfiguracji / No config
     if (file_exists($setup_file)) {
-        // Przekieruj na setup
+        // Przekieruj na setup / Redirect to setup
         header('Location: ' . $base_path . '/generate_hash.php');
         exit;
     } else {
-        // Brak pliku setup - pokaż komunikat błędu
+        // Brak pliku setup - pokaż komunikat błędu / No setup file - show error
         http_response_code(500);
         die('
         <!DOCTYPE html>
-        <html lang="pl">
+        <html lang="' . h(getCurrentLang()) . '">
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Shopicker - Błąd konfiguracji</title>
+            <title>' . h(__('config.error_title')) . '</title>
             <style>
                 * {
                     box-sizing: border-box;
@@ -121,27 +125,27 @@ if (!file_exists($config_file)) {
         </head>
         <body>
             <div class="error-box">
-                <h1>⚠️ Błąd konfiguracji</h1>
-                <h2>Brak wymaganych plików</h2>
+                <h1>' . h(__('config.error_heading')) . '</h1>
+                <h2>' . h(__('config.error_subheading')) . '</h2>
                 
                 <div class="code-box">
-                    <strong>Brakujące pliki:</strong><br>
-                    • config.php (konfiguracja)<br>
-                    • generate_hash.php (instalator)
+                    <strong>' . h(__('config.missing_files')) . '</strong><br>
+                    • ' . h(__('config.file_config')) . '<br>
+                    • ' . h(__('config.file_setup')) . '
                 </div>
                 
                 <div class="steps">
-                    <strong>🔧 Jak to naprawić:</strong>
+                    <strong>' . h(__('config.how_to_fix')) . '</strong>
                     <ol>
-                        <li>Wgraj plik <strong>generate_hash.php</strong> do katalogu aplikacji</li>
-                        <li>Przejdź na <strong>stronę główną</strong> aplikacji</li>
-                        <li>Zostaniesz przekierowany na formularz konfiguracji</li>
-                        <li>Ustaw PIN i gotowe!</li>
+                        <li>' . __('config.step_1') . '</li>
+                        <li>' . h(__('editor.go_to_main')) . '</li>
+                        <li>' . h(__('config.step_3')) . '</li>
+                        <li>' . h(__('config.step_4')) . '</li>
                     </ol>
                 </div>
                 
                 <p style="margin-top: 20px; text-align: center; font-size: 0.9em; color: #999;">
-                    Jeśli problem się powtarza, skontaktuj się z administratorem
+                    ' . h(__('config.contact_admin')) . '
                 </p>
             </div>
         </body>
@@ -149,173 +153,186 @@ if (!file_exists($config_file)) {
         ');
     }
 }
-// === KONIEC ===
+// === KONIEC / END ===
 
-// === AUTH CHECK ===
+// === SPRAWDZENIE AUTORYZACJI / AUTH CHECK ===
 if (empty($_SESSION['auth'])) {
-    // Nie zalogowany - przekieruj na główną stronę (która wymusi logowanie)
+    // Nie zalogowany - przekieruj na główną stronę / Not logged in - redirect to main
     header('Location: ' . $base_path . '/');
     exit;
 }
-// === KONIEC AUTH ===
+// === KONIEC AUTH / END AUTH ===
 
 header('Cache-Control: no-cache, must-revalidate');
 header('Expires: Mon, 26 Jul 1997 05:00:00 GMT');
 
-$plik_konfiguracji = __DIR__ . '/produkty_sklepy.php';
-$wersja_backup = __DIR__ . '/produkty_sklepy_backup_' . date('Y-m-d_His') . '.php';
+$config_products_file = __DIR__ . '/produkty_sklepy.php';
+$backup_version = __DIR__ . '/produkty_sklepy_backup_' . date('Y-m-d_His') . '.php';
 
 // ============================================
-// FUNKCJE POMOCNICZE
+// FUNKCJE POMOCNICZE / HELPER FUNCTIONS
 // ============================================
 
-function zapiszKonfiguracje($plik, $dane) {
-    $kod_php = "<?php\n";
-    $kod_php .= "// ============================================\n";
-    $kod_php .= "// KONFIGURACJA: Lista sklepów i produktów\n";
-    $kod_php .= "// Ostatnia edycja: " . date('Y-m-d H:i:s') . "\n";
-    $kod_php .= "// ============================================\n\n";
-    $kod_php .= "return [\n";
+/**
+ * Zapisuje konfigurację produktów do pliku PHP / Save products config to PHP file
+ */
+function saveConfiguration($file, $data) {
+    $php_code = "<?php\n";
+    $php_code .= "// ============================================\n";
+    $php_code .= "// KONFIGURACJA: Lista sklepów i produktów\n";
+    $php_code .= "// CONFIG: Stores and products list\n";
+    $php_code .= "// Ostatnia edycja / Last edit: " . date('Y-m-d H:i:s') . "\n";
+    $php_code .= "// ============================================\n\n";
+    $php_code .= "return [\n";
     
-    foreach ($dane as $sklep => $produkty) {
+    foreach ($data as $store => $products) {
         // Użyj bezpiecznego enkodowania pojedynczych apostrofów
-        $kod_php .= "    '" . str_replace("'", "\\'", $sklep) . "' => [\n";
-        foreach ($produkty as $produkt) {
-            $name = str_replace("'", "\\'", $produkt['name']);
-            $unit = str_replace("'", "\\'", $produkt['unit']);
-            $kod_php .= "        ['name' => '" . $name . "', 'unit' => '" . $unit . "'],\n";
+        $php_code .= "    '" . str_replace("'", "\\'", $store) . "' => [\n";
+        foreach ($products as $product) {
+            $name = str_replace("'", "\\'", $product['name']);
+            $unit = str_replace("'", "\\'", $product['unit']);
+            $php_code .= "        ['name' => '" . $name . "', 'unit' => '" . $unit . "'],\n";
         }
-        $kod_php .= "    ],\n\n";
+        $php_code .= "    ],\n\n";
     }
     
-    $kod_php .= "];\n";
+    $php_code .= "];\n";
 
-    // atomic write: zapisz do tmp, potem rename
-    $tmp = $plik . '.tmp';
-    $written = @file_put_contents($tmp, $kod_php, LOCK_EX);
+    // Atomic write: zapisz do tmp, potem rename
+    $tmp = $file . '.tmp';
+    $written = @file_put_contents($tmp, $php_code, LOCK_EX);
     if ($written === false) {
-        error_log("Nie udało się zapisać pliku tymczasowego: $tmp");
+        error_log("Failed to write temp file: $tmp");
         return false;
     }
-    if (!@rename($tmp, $plik)) {
-        // fallback
-        $result = @file_put_contents($plik, $kod_php, LOCK_EX);
+    if (!@rename($tmp, $file)) {
+        // Fallback
+        $result = @file_put_contents($file, $php_code, LOCK_EX);
         if ($result === false) {
-            error_log("Nie udało się zapisać pliku docelowego: $plik");
+            error_log("Failed to write target file: $file");
             return false;
         }
     }
     return true;
 }
 
-function walidujDane($post_data) {
-    $bledy = [];
+/**
+ * Waliduje dane formularza / Validate form data
+ */
+function validateData($post_data) {
+    $errors = [];
     
-    if (empty($post_data['sklepy']) || !is_array($post_data['sklepy'])) {
-        $bledy[] = "Brak danych sklepów.";
-        return $bledy;
+    if (empty($post_data['stores']) || !is_array($post_data['stores'])) {
+        $errors[] = __('editor.error_no_stores');
+        return $errors;
     }
     
-    foreach ($post_data['sklepy'] as $index => $sklep) {
-        $numer = $index + 1;
+    foreach ($post_data['stores'] as $index => $store) {
+        $number = $index + 1;
         
-        if (empty(trim((string)$sklep['nazwa']))) {
-            $bledy[] = "Sklep #{$numer}: Nazwa sklepu nie może być pusta.";
+        if (empty(trim((string)$store['name']))) {
+            $errors[] = __('editor.error_empty_store', ['number' => $number]);
         }
         
-        if (isset($sklep['produkty']) && is_array($sklep['produkty'])) {
-            foreach ($sklep['produkty'] as $p_index => $produkt) {
-                $p_numer = $p_index + 1;
-                if (empty(trim((string)$produkt['name']))) {
-                    $bledy[] = "Sklep '{$sklep['nazwa']}', produkt #{$p_numer}: Nazwa produktu nie może być pusta.";
+        if (isset($store['products']) && is_array($store['products'])) {
+            foreach ($store['products'] as $p_index => $product) {
+                $p_number = $p_index + 1;
+                if (empty(trim((string)$product['name']))) {
+                    $errors[] = __('editor.error_empty_product', ['store' => $store['name'], 'number' => $p_number]);
                 }
-                if (empty(trim((string)$produkt['unit']))) {
-                    $bledy[] = "Sklep '{$sklep['nazwa']}', produkt #{$p_numer}: Jednostka nie może być pusta.";
+                if (empty(trim((string)$product['unit']))) {
+                    $errors[] = __('editor.error_empty_unit', ['store' => $store['name'], 'number' => $p_number]);
                 }
             }
         }
     }
     
-    return $bledy;
+    return $errors;
 }
 
 // ============================================
-// OBSŁUGA ZAPISU
+// OBSŁUGA ZAPISU / SAVE HANDLING
 // ============================================
-$komunikat = '';
-$komunikat_typ = '';
-$zapisano_pomyslnie = false;
+$message = '';
+$message_type = '';
+$saved_successfully = false;
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['zapisz'])) {
-    // CSRF check
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save'])) {
+    // Sprawdź CSRF / Check CSRF
     if (!validate_csrf()) {
-        $komunikat = "Nieprawidłowy token CSRF.";
-        $komunikat_typ = 'blad';
+        $message = __('errors.csrf_invalid');
+        $message_type = 'error';
     } else {
-        $bledy = walidujDane($_POST);
+        $errors = validateData($_POST);
         
-        if (empty($bledy)) {
-            // Utwórz backup jeśli istnieje
-            if (file_exists($plik_konfiguracji)) {
-                @copy($plik_konfiguracji, $wersja_backup);
+        if (empty($errors)) {
+            // Utwórz backup jeśli istnieje / Create backup if exists
+            if (file_exists($config_products_file)) {
+                @copy($config_products_file, $backup_version);
             }
             
-            // Przygotuj dane (używaj surowych wartości do logiki, nie escapuj tutaj)
-            $nowe_dane = [];
-            foreach ($_POST['sklepy'] as $sklep) {
-                $nazwa_sklepu = trim((string)$sklep['nazwa']);
-                if ($nazwa_sklepu === '') continue;
+            // Przygotuj dane / Prepare data
+            $new_data = [];
+            foreach ($_POST['stores'] as $store) {
+                $store_name = trim((string)$store['name']);
+                if ($store_name === '') continue;
                 
-                $nowe_dane[$nazwa_sklepu] = [];
+                $new_data[$store_name] = [];
                 
-                if (isset($sklep['produkty']) && is_array($sklep['produkty'])) {
-                    foreach ($sklep['produkty'] as $produkt) {
-                        $nazwa_produktu = trim((string)$produkt['name']);
-                        $jednostka = trim((string)$produkt['unit']);
+                if (isset($store['products']) && is_array($store['products'])) {
+                    foreach ($store['products'] as $product) {
+                        $product_name = trim((string)$product['name']);
+                        $unit = trim((string)$product['unit']);
                         
-                        if ($nazwa_produktu !== '' && $jednostka !== '') {
-                            $nowe_dane[$nazwa_sklepu][] = [
-                                'name' => $nazwa_produktu,
-                                'unit' => $jednostka
+                        if ($product_name !== '' && $unit !== '') {
+                            $new_data[$store_name][] = [
+                                'name' => $product_name,
+                                'unit' => $unit
                             ];
                         }
                     }
                 }
             }
             
-            // Zapisz
-            if (zapiszKonfiguracje($plik_konfiguracji, $nowe_dane)) {
-                $komunikat = "Zmiany zostały zapisane pomyślnie!";
-                $komunikat_typ = 'sukces';
-                $zapisano_pomyslnie = true;
+            // Zapisz / Save
+            if (saveConfiguration($config_products_file, $new_data)) {
+                $message = __('editor.save_success');
+                $message_type = 'success';
+                $saved_successfully = true;
             } else {
-                $komunikat = "Błąd zapisu pliku!";
-                $komunikat_typ = 'blad';
+                $message = __('editor.save_error');
+                $message_type = 'error';
             }
         } else {
-            $komunikat = implode("\n", $bledy);
-            $komunikat_typ = 'blad';
+            $message = implode("\n", $errors);
+            $message_type = 'error';
         }
     }
 }
 
 // ============================================
-// WCZYTANIE AKTUALNYCH DANYCH
+// WCZYTANIE AKTUALNYCH DANYCH / LOAD CURRENT DATA
 // ============================================
-$produkty_sklepy = require $plik_konfiguracji;
-if (!is_array($produkty_sklepy)) {
-    die('Błąd: plik produkty_sklepy.php nie zwrócił poprawnej tablicy.');
+$products_by_store = require $config_products_file;
+if (!is_array($products_by_store)) {
+    die(h(__('config.error_products_file')));
+}
+
+// Przygotuj tłumaczenia dla JavaScript / Prepare translations for JavaScript
+$js_translations = I18n::getInstance()->get('editor_js');
+if (!is_array($js_translations)) {
+    $js_translations = [];
 }
 
 ?>
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="<?php echo h(getCurrentLang()); ?>">
 <head>
     <meta charset="UTF-8">
-    <title>Edycja listy - Shopicker</title>
+    <title><?php _e('editor.title'); ?></title>
     <link rel="icon" type="image/svg+xml" href="<?php echo h($base_path); ?>/assets/favicon.svg" />
 	
-    <!-- FONT LOADING -->
+    <!-- Ładowanie fontów / Font loading -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600&display=swap" rel="stylesheet">	
@@ -323,13 +340,7 @@ if (!is_array($produkty_sklepy)) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<style>
 		/* ========================================
-		   IMPORT FONTÓW
-		   ======================================== */
-		
-		/*@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');*/
-		
-		/* ========================================
-		   ZMIENNE I RESET
+		   ZMIENNE I RESET / VARIABLES AND RESET
 		   ======================================== */
 		
 		:root {
@@ -369,7 +380,7 @@ if (!is_array($produkty_sklepy)) {
 			max-width: 670px;
 		}
 
-		.montserrat-logo {
+		.logo-text {
 			font-family: "Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
 			font-optical-sizing: auto;
 			font-weight: 600;
@@ -379,10 +390,10 @@ if (!is_array($produkty_sklepy)) {
 		}
 		
 		/* ========================================
-		   STICKY TOP BAR (jak w głównej liście)
+		   STICKY TOP BAR
 		   ======================================== */
 		
-		.naglowek-kontener {
+		.header-container {
 			position: sticky;
 			top: 0;
 			z-index: 100;
@@ -397,15 +408,15 @@ if (!is_array($produkty_sklepy)) {
 			margin-bottom: 20px;
 		}
 		
-		.naglowek-kontener h1 {
+		.header-container h1 {
 			order: 2;
 		}
 		
-		.naglowek-kontener > div {
+		.header-container > div {
 			order: 3;
 		}
 		
-		.przycisk-naglowek {
+		.btn-header {
 			padding: 10px 16px;
 			background: var(--secondary-color);
 			color: white;
@@ -421,21 +432,21 @@ if (!is_array($produkty_sklepy)) {
 			white-space: nowrap;
 		}
 		
-		.przycisk-naglowek:hover {
+		.btn-header:hover {
 			background: var(--secondary-hover);
 			transform: translateY(-1px);
 			box-shadow: 0 2px 8px rgba(33, 150, 243, 0.3);
 		}
 		
-		.przycisk-naglowek:active {
+		.btn-header:active {
 			transform: scale(0.95);
 		}
 
 		/* ========================================
-		   WSKAŹNIK AKTUALNEGO SKLEPU
+		   WSKAŹNIK AKTUALNEGO SKLEPU / CURRENT STORE INDICATOR
 		   ======================================== */
 		
-		#currentShopIndicator {
+		#currentStoreIndicator {
 			font-size: 1.1em;
 			color: #333;
 			font-weight: 600;
@@ -452,24 +463,24 @@ if (!is_array($produkty_sklepy)) {
 			white-space: nowrap;
 		}
 		
-		#currentShopIndicator.visible {
+		#currentStoreIndicator.visible {
 			opacity: 1;
 			visibility: visible;
 		}
 		
 		/* Desktop - tytuł i przycisk w pierwszej linii, sklep w drugiej */
 		@media (min-width: 769px) {
-			.naglowek-kontener h1 {
+			.header-container h1 {
 				order: 1;
 				flex: 0 0 auto;
 			}
 
-			.naglowek-kontener > div:last-child {
+			.header-container > div:last-child {
 				order: 2;
 				margin-left: auto;
 			}
 
-			#currentShopIndicator {
+			#currentStoreIndicator {
 				order: 3;
 				width: 100%;
 				margin-top: 0;
@@ -481,7 +492,7 @@ if (!is_array($produkty_sklepy)) {
 		
 		/* Mobile - pod tytułem */
 		@media (max-width: 768px) {
-			#currentShopIndicator {
+			#currentStoreIndicator {
 				order: 1;
 				width: 100%;
 				text-align: center;
@@ -491,17 +502,17 @@ if (!is_array($produkty_sklepy)) {
 		}
 
 		/* ========================================
-		   EDYTOR - GŁÓWNY KONTENER
+		   EDYTOR - GŁÓWNY KONTENER / EDITOR - MAIN CONTAINER
 		   ======================================== */
 		
-		.edytor-kontener {
+		.editor-container {
 			max-width: 1200px;
 			margin: 0 auto;
 			padding: 20px;
 		}
 		
 		/* ========================================
-		   TOOLBAR - FILTR I AKCJE
+		   TOOLBAR - FILTR I AKCJE / TOOLBAR - FILTER AND ACTIONS
 		   ======================================== */
 		
 		.toolbar {
@@ -613,10 +624,10 @@ if (!is_array($produkty_sklepy)) {
 		}
 		
 		/* ========================================
-		   SKLEPY - SKŁADANE (delikatny gradient)
+		   SKLEPY - SKŁADANE / STORES - COLLAPSIBLE
 		   ======================================== */
 		
-		.sklep-edytor {
+		.store-editor {
 			background: white;
 			border: 2px solid var(--border-color);
 			border-radius: var(--radius);
@@ -625,36 +636,36 @@ if (!is_array($produkty_sklepy)) {
 			box-shadow: var(--shadow);
 		}
 		
-		.sklep-edytor.hidden {
+		.store-editor.hidden {
 			display: none;
 		}
 		
-		.sklep-edytor:hover {
+		.store-editor:hover {
 			box-shadow: var(--shadow-hover);
 		}
 		
-		.sklep-edytor.dragging {
+		.store-editor.dragging {
 			opacity: 0.6;
 			border-color: var(--primary-color);
 			box-shadow: 0 8px 20px rgba(76, 175, 80, 0.3);
 		}
 		
-		.sklep-edytor.drag-over {
+		.store-editor.drag-over {
 			border-color: var(--secondary-color);
 			background: #e3f2fd;
 			border-style: dashed;
 		}
 		
-		.sklep-edytor.collapsed .sklep-zawartość {
+		.store-editor.collapsed .store-content {
 			display: none;
 		}
 		
-		.sklep-edytor.collapsed .sklep-naglowek {
+		.store-editor.collapsed .store-header {
 			border-bottom: none;
 			border-radius: var(--radius);
 		}
 		
-		.sklep-naglowek {
+		.store-header {
 			background: linear-gradient(135deg, #f8f8fc 0%, #e8e8f5 100%);
 			color: #333;
 			display: flex;
@@ -675,11 +686,11 @@ if (!is_array($produkty_sklepy)) {
 			padding: 4px;
 		}
 		
-		.sklep-edytor.collapsed .toggle-icon {
+		.store-editor.collapsed .toggle-icon {
 			transform: rotate(-90deg);
 		}
 		
-		.sklep-naglowek-drag {
+		.store-header-drag {
 			cursor: grab;
 			font-size: 1.3em;
 			color: #666;
@@ -688,16 +699,16 @@ if (!is_array($produkty_sklepy)) {
 			border-radius: 4px;
 		}
 
-		.sklep-naglowek-drag:hover {
+		.store-header-drag:hover {
 			color: #333;
 			background: rgba(0, 0, 0, 0.05);
 		}
 
-		.sklep-naglowek-drag:active {
+		.store-header-drag:active {
 			cursor: grabbing;
 		}
 		
-		.sklep-naglowek input {
+		.store-header input {
 			flex: 1;
 			font-size: 1.1em;
 			font-weight: 600;
@@ -710,14 +721,14 @@ if (!is_array($produkty_sklepy)) {
 			color: #333;
 		}
 
-		.sklep-naglowek input:focus {
+		.store-header input:focus {
 			outline: none;
 			background: white;
 			border-color: var(--primary-color);
 			box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
 		}
 
-		.licznik-produktow {
+		.product-counter {
 			display: inline-flex;
 			align-items: center;
 			gap: 6px;
@@ -730,12 +741,12 @@ if (!is_array($produkty_sklepy)) {
 			white-space: nowrap;
 		}
 		
-		.sklep-akcje {
+		.store-actions {
 			display: flex;
 			gap: 6px;
 		}
 		
-		.btn-usun-sklep {
+		.btn-delete-store {
 			background: var(--danger-bg);
 			color: var(--danger-color);
 			border: 2px solid var(--danger-color);
@@ -748,46 +759,46 @@ if (!is_array($produkty_sklepy)) {
 			white-space: nowrap;
 		}
 		
-		.btn-usun-sklep:hover {
+		.btn-delete-store:hover {
 			background: var(--danger-color);
 			color: white;
 			box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
 			transform: scale(1.05);
 		}
 		
-		.btn-usun-sklep:active {
+		.btn-delete-store:active {
 			transform: scale(0.95);
 		}
 		
 		/* ========================================
-		   ZAWARTOŚĆ SKLEPU
+		   ZAWARTOŚĆ SKLEPU / STORE CONTENT
 		   ======================================== */
 		
-		.sklep-zawartość {
+		.store-content {
 			padding: 16px;
 			background: white;
 		}
 		
-		.dodaj-produkt-dol {
+		.add-product-bottom {
 			background: var(--bg-lighter);
 			border-radius: var(--radius);
 			padding: 12px;
 			margin-top: 12px;
 		}
 		
-		/* Ukryj przycisk na dole gdy lista jest pusta (jest info "Brak produktów...") */
-		.pusty-sklep-info ~ .dodaj-produkt-dol {
+		/* Ukryj przycisk na dole gdy lista jest pusta */
+		.empty-store-info ~ .add-product-bottom {
 			display: none;
 		}
 		
-		.produkty-kontener {
+		.products-container {
 			background: var(--bg-lighter);
 			border-radius: var(--radius);
 			padding: 12px;
 			margin-bottom: 12px;
 		}
 		
-		.produkt-edytor {
+		.product-editor {
 			display: grid;
 			grid-template-columns: auto 1fr 120px auto;
 			gap: 8px;
@@ -801,25 +812,25 @@ if (!is_array($produkty_sklepy)) {
 			position: relative;
 		}
 		
-		.produkt-edytor:last-child {
+		.product-editor:last-child {
 			margin-bottom: 0;
 		}
 		
-		.produkt-edytor:hover {
+		.product-editor:hover {
 			box-shadow: var(--shadow);
 		}
 		
-		.produkt-edytor.dragging {
+		.product-editor.dragging {
 			opacity: 0.6;
 			box-shadow: 0 4px 12px rgba(76, 175, 80, 0.2);
 		}
 		
-		.produkt-edytor.duplicate-warning {
+		.product-editor.duplicate-warning {
 			border-color: var(--warning-color);
 			background: var(--warning-bg);
 		}
 		
-		.produkt-drag-handle {
+		.product-drag-handle {
 			cursor: grab;
 			font-size: 1.1em;
 			color: #bbb;
@@ -829,16 +840,16 @@ if (!is_array($produkty_sklepy)) {
 			border-radius: 4px;
 		}
 		
-		.produkt-drag-handle:hover {
+		.product-drag-handle:hover {
 			color: var(--primary-color);
 			background: var(--bg-light);
 		}
 		
-		.produkt-drag-handle:active {
+		.product-drag-handle:active {
 			cursor: grabbing;
 		}
 		
-		.produkt-edytor input[type="text"] {
+		.product-editor input[type="text"] {
 			padding: 8px 10px;
 			border: 1px solid var(--border-color);
 			border-radius: 4px;
@@ -847,23 +858,23 @@ if (!is_array($produkty_sklepy)) {
 			transition: var(--transition);
 		}
 		
-		.produkt-edytor input[type="text"]:focus {
+		.product-editor input[type="text"]:focus {
 			outline: none;
 			border-color: var(--primary-color);
 			box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
 		}
 		
 		/* ========================================
-		   PRZYCISKI AKCJI PRODUKTU
+		   PRZYCISKI AKCJI PRODUKTU / PRODUCT ACTION BUTTONS
 		   ======================================== */
 
-		.produkt-akcje {
+		.product-actions {
 			display: flex;
 			gap: 6px;
 			align-items: center;
 		}
 
-		.btn-usun-produkt {
+		.btn-delete-product {
 			background: var(--danger-bg);
 			color: var(--danger-color);
 			border: 2px solid var(--danger-color);
@@ -876,18 +887,18 @@ if (!is_array($produkty_sklepy)) {
 			white-space: nowrap;
 		}
 		
-		.btn-usun-produkt:hover {
+		.btn-delete-product:hover {
 			background: var(--danger-color);
 			color: white;
 			box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
 			transform: scale(1.05);
 		}
 
-		.btn-usun-produkt:active {
+		.btn-delete-product:active {
 			transform: scale(0.95);
 		}
 
-		.btn-dodaj-ponizej {
+		.btn-add-below {
 			background: var(--primary-color);
 			color: white;
 			border: 2px solid var(--primary-color);
@@ -900,17 +911,17 @@ if (!is_array($produkty_sklepy)) {
 			white-space: nowrap;
 		}
 
-		.btn-dodaj-ponizej:hover {
+		.btn-add-below:hover {
 			background: var(--primary-hover);
 			box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
 			transform: scale(1.05);
 		}
 
-		.btn-dodaj-ponizej:active {
+		.btn-add-below:active {
 			transform: scale(0.95);
 		}
 		
-		.btn-dodaj {
+		.btn-add {
 			background: var(--primary-color);
 			color: white;
 			width: 100%;
@@ -923,17 +934,17 @@ if (!is_array($produkty_sklepy)) {
 			font-size: 0.95em;
 		}
 		
-		.btn-dodaj:hover {
+		.btn-add:hover {
 			background: var(--primary-hover);
 			box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
 			transform: scale(1.02);
 		}
 		
-		.btn-dodaj:active {
+		.btn-add:active {
 			transform: scale(0.95);
 		}
 		
-		.pusty-sklep-info {
+		.empty-store-info {
 			text-align: center;
 			padding: 24px;
 			background: white;
@@ -943,7 +954,7 @@ if (!is_array($produkty_sklepy)) {
 		}
 		
 		/* ========================================
-		   OSTRZEŻENIE O DUPLIKACIE
+		   OSTRZEŻENIE O DUPLIKACIE / DUPLICATE WARNING
 		   ======================================== */
 		
 		.duplicate-badge {
@@ -961,10 +972,10 @@ if (!is_array($produkty_sklepy)) {
 		}
 		
 		/* ========================================
-		   PRZYCISKI GŁÓWNE
+		   PRZYCISKI GŁÓWNE / MAIN BUTTONS
 		   ======================================== */
 		
-		.btn-dodaj-sklep {
+		.btn-add-store {
 			background: var(--secondary-color);
 			color: white;
 			border: none;
@@ -978,23 +989,23 @@ if (!is_array($produkty_sklepy)) {
 			transition: var(--transition);
 		}
 		
-		.btn-dodaj-sklep:hover {
+		.btn-add-store:hover {
 			background: var(--secondary-hover);
 			box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
 			transform: scale(1.02);
 		}
 		
-		.btn-dodaj-sklep:active {
+		.btn-add-store:active {
 			transform: scale(0.95);
 		}
 		
-		.przyciski-akcji {
+		.action-buttons {
 			display: flex;
 			gap: 12px;
 			margin: 30px 0;
 		}
 		
-		.btn-zapisz {
+		.btn-save {
 			background: var(--primary-color);
 			color: white;
 			border: none;
@@ -1007,17 +1018,17 @@ if (!is_array($produkty_sklepy)) {
 			transition: var(--transition);
 		}
 		
-		.btn-zapisz:hover {
+		.btn-save:hover {
 			background: var(--primary-hover);
 			box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
 			transform: scale(1.02);
 		}
 		
-		.btn-zapisz:active {
+		.btn-save:active {
 			transform: scale(0.95);
 		}
 		
-		.btn-anuluj {
+		.btn-cancel {
 			background: #757575;
 			color: white;
 			border: none;
@@ -1034,21 +1045,21 @@ if (!is_array($produkty_sklepy)) {
 			transition: var(--transition);
 		}
 		
-		.btn-anuluj:hover {
+		.btn-cancel:hover {
 			background: #616161;
 			box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 			transform: scale(1.02);
 		}
 		
-		.btn-anuluj:active {
+		.btn-cancel:active {
 			transform: scale(0.95);
 		}
 		
 		/* ========================================
-		   KOMUNIKATY
+		   KOMUNIKATY / MESSAGES
 		   ======================================== */
 		
-		.komunikat {
+		.message {
 			padding: 20px;
 			border-radius: var(--radius);
 			margin-bottom: 24px;
@@ -1067,19 +1078,19 @@ if (!is_array($produkty_sklepy)) {
 			}
 		}
 		
-		.komunikat.sukces {
+		.message.success {
 			background: #d4edda;
 			border: 2px solid #c3e6cb;
 			color: #155724;
 		}
 		
-		.komunikat.blad {
+		.message.error {
 			background: #f8d7da;
 			border: 2px solid #f5c6cb;
 			color: #721c24;
 		}
 		
-		.btn-powrot-sukces {
+		.btn-return-success {
 			display: inline-block;
 			background: var(--primary-color);
 			color: white;
@@ -1091,21 +1102,21 @@ if (!is_array($produkty_sklepy)) {
 			margin-top: 12px;
 		}
 		
-		.btn-powrot-sukces:hover {
+		.btn-return-success:hover {
 			background: var(--primary-hover);
 			box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
 			transform: scale(1.05);
 		}
 		
-		.btn-powrot-sukces:active {
+		.btn-return-success:active {
 			transform: scale(0.95);
 		}
 		
 		/* ========================================
-		   PŁYWAJĄCY PRZYCISK
+		   PŁYWAJĄCY PRZYCISK / FLOATING BUTTON
 		   ======================================== */
 		
-		.plywajacy-zapisz {
+		.floating-save {
 			position: fixed;
 			bottom: 20px;
 			right: 20px;
@@ -1124,7 +1135,7 @@ if (!is_array($produkty_sklepy)) {
 			}
 		}
 		
-		.btn-plywajacy-zapisz {
+		.btn-floating-save {
 			background: var(--primary-color);
 			color: white;
 			border: none;
@@ -1140,52 +1151,52 @@ if (!is_array($produkty_sklepy)) {
 			gap: 10px;
 		}
 		
-		.btn-plywajacy-zapisz:hover {
+		.btn-floating-save:hover {
 			background: var(--primary-hover);
 			transform: translateY(-3px) scale(1.05);
 			box-shadow: 0 8px 25px rgba(76, 175, 80, 0.5);
 		}
 		
-		.btn-plywajacy-zapisz:active {
+		.btn-floating-save:active {
 			transform: translateY(-1px) scale(1.02);
 		}
 		
 		/* ========================================
-		   INFO O BRAKU WYNIKÓW
+		   INFO O BRAKU WYNIKÓW / NO RESULTS INFO
 		   ======================================== */
 		
-		.brak-wynikow {
+		.no-results {
 			text-align: center;
 			padding: 60px 20px;
 			color: #999;
 		}
 		
-		.brak-wynikow-icon {
+		.no-results-icon {
 			font-size: 4em;
 			margin-bottom: 16px;
 		}
 		
-		.brak-wynikow h3 {
+		.no-results h3 {
 			margin: 0 0 8px 0;
 			color: #666;
 		}
 		
-		.brak-wynikow p {
+		.no-results p {
 			margin: 0;
 			font-size: 0.95em;
 		}
 		
 		/* ========================================
-		   RESPONSYWNOŚĆ MOBILE
+		   RESPONSYWNOŚĆ MOBILE / MOBILE RESPONSIVENESS
 		   ======================================== */
 		
 		@media (max-width: 768px) {
-			/* NAGŁÓWEK RESPONSYWNY (jak w głównej liście) */
-			.naglowek-kontener {
+			/* NAGŁÓWEK RESPONSYWNY */
+			.header-container {
 				padding: 8px 12px;
 			}
 			
-			.naglowek-kontener h1 {
+			.header-container h1 {
 				order: 0;
 				width: 100%;
 				text-align: center;
@@ -1193,19 +1204,19 @@ if (!is_array($produkty_sklepy)) {
 				margin-bottom: 4px;
 			}
 			
-			#currentShopIndicator {
+			#currentStoreIndicator {
 				order: 1;
 				width: 100%;
 				text-align: center;
 				margin-bottom: 8px;
 			}
 			
-			.naglowek-kontener > div {
+			.header-container > div {
 				order: 2;
 				width: 100%;
 			}
 			
-			.przycisk-naglowek {
+			.btn-header {
 				width: 100%;
 				justify-content: center;
 				padding: 12px 16px;
@@ -1213,7 +1224,7 @@ if (!is_array($produkty_sklepy)) {
 			}
 			
 			/* EDYTOR */
-			.edytor-kontener {
+			.editor-container {
 				padding: 12px;
 			}
 			
@@ -1254,7 +1265,7 @@ if (!is_array($produkty_sklepy)) {
 				font-size: 1em;
 			}
 			
-			.sklep-naglowek {
+			.store-header {
 				flex-wrap: wrap;
 				padding: 12px 14px;
 			}
@@ -1263,11 +1274,11 @@ if (!is_array($produkty_sklepy)) {
 				font-size: 1.4em;
 			}
 			
-			.sklep-naglowek-drag {
+			.store-header-drag {
 				font-size: 1.5em;
 			}
 			
-			.sklep-naglowek input {
+			.store-header input {
 				order: 3;
 				width: 100%;
 				margin-top: 10px;
@@ -1275,128 +1286,128 @@ if (!is_array($produkty_sklepy)) {
 				padding: 10px 14px;
 			}
 			
-			.licznik-produktow {
+			.product-counter {
 				order: 2;
 				font-size: 1em;
 				padding: 7px 14px;
 			}
 			
-			.sklep-akcje {
+			.store-actions {
 				order: 4;
 				width: 100%;
 				margin-top: 10px;
 			}
 			
-			.btn-usun-sklep {
+			.btn-delete-store {
 				flex: 1;
 				padding: 12px;
 				font-size: 1.05em;
 			}
 			
-			.produkty-kontener {
+			.products-container {
 				padding: 12px;
 			}
 			
-			.produkt-edytor {
+			.product-editor {
 				grid-template-columns: auto 1fr;
 				gap: 10px;
 				padding: 12px;
 			}
 			
-			.produkt-drag-handle {
+			.product-drag-handle {
 				grid-row: 1 / 4;
 				font-size: 1.3em;
 			}
 			
-			.produkt-edytor input[type="text"] {
+			.product-editor input[type="text"] {
 				font-size: 1.05em;
 				padding: 10px 12px;
 			}
 			
-			.produkt-edytor input[type="text"]:nth-of-type(1) {
+			.product-editor input[type="text"]:nth-of-type(1) {
 				grid-column: 2;
 			}
 			
-			.produkt-edytor input[type="text"]:nth-of-type(2) {
+			.product-editor input[type="text"]:nth-of-type(2) {
 				grid-column: 2;
 			}
 			
-			.produkt-akcje {
+			.product-actions {
 				grid-column: 1 / 3;
 				width: 100%;
 			}
 
-			.produkt-akcje button {
+			.product-actions button {
 				flex: 1;
 			}
 			
-			.btn-dodaj {
+			.btn-add {
 				padding: 12px;
 				font-size: 1.05em;
 			}
 			
-			.btn-dodaj-sklep {
+			.btn-add-store {
 				padding: 16px 24px;
 				font-size: 1.1em;
 			}
 			
-			.przyciski-akcji {
+			.action-buttons {
 				flex-direction: column;
 			}
 			
-			.btn-zapisz,
-			.btn-anuluj {
+			.btn-save,
+			.btn-cancel {
 				width: 100%;
 				padding: 18px 32px;
 				font-size: 1.15em;
 			}
 			
-			.plywajacy-zapisz {
+			.floating-save {
 				bottom: 12px;
 				right: 12px;
 				left: 12px;
 			}
 			
-			.btn-plywajacy-zapisz {
+			.btn-floating-save {
 				width: 100%;
 				justify-content: center;
 				padding: 20px 24px;
 				font-size: 1.2em;
 			}
 			
-			.pusty-sklep-info {
+			.empty-store-info {
 				font-size: 1.05em;
 				padding: 28px;
 			}
 			
-			.brak-wynikow h3 {
+			.no-results h3 {
 				font-size: 1.2em;
 			}
 			
-			.brak-wynikow p {
+			.no-results p {
 				font-size: 1.05em;
 			}
 		}
 		
 		@media (max-width: 480px) {
-			.sklep-naglowek input {
+			.store-header input {
 				font-size: 1.1em;
 				padding: 10px 12px;
 			}
 			
-			.produkt-edytor input[type="text"] {
+			.product-editor input[type="text"] {
 				font-size: 1em;
 				padding: 9px 11px;
 			}
 			
-			.btn-plywajacy-zapisz {
+			.btn-floating-save {
 				padding: 18px 22px;
 				font-size: 1.15em;
 			}
 		}
 		
 		/* ========================================
-		   FOCUS VISIBLE (dostępność)
+		   FOCUS VISIBLE (dostępność / accessibility)
 		   ======================================== */
 		
 		button:focus-visible,
@@ -1410,33 +1421,33 @@ if (!is_array($produkty_sklepy)) {
 </head>
 <body>
 
-	<div class="naglowek-kontener">
-		<h1 class="montserrat-logo">
+	<div class="header-container">
+		<h1 class="logo-text">
 			<img src="<?php echo h($base_path); ?>/assets/favicon.svg" 
 				 alt="Logo" 
 				 style="height: 1.5em; vertical-align: middle; margin-right: -0.2em">
-			Shopicker - Edycja
+			<?php _e('editor.heading'); ?>
 		</h1>
-		<div id="currentShopIndicator">
-			<span id="currentShopName"></span> <span class="shop-product-icon">📦</span> <span id="currentShopProductCount"></span>
+		<div id="currentStoreIndicator">
+			<span id="currentStoreName"></span> <span class="store-product-icon">📦</span> <span id="currentStoreProductCount"></span>
 		</div>
 		<div>
-			<a href="<?php echo h($base_path); ?>/" class="przycisk-naglowek">← Powrót do listy</a>
+			<a href="<?php echo h($base_path); ?>/" class="btn-header"><?php _e('editor.back_to_list'); ?></a>
 		</div>
 	</div>
 		
-    <div class="edytor-kontener">
-		<?php if ($komunikat): ?>
-			<div class="komunikat <?php echo h($komunikat_typ); ?>">
-				<?php if ($komunikat_typ === 'blad'): ?>
-					<?php echo nl2br(h($komunikat)); ?>
+    <div class="editor-container">
+		<?php if ($message): ?>
+			<div class="message <?php echo h($message_type); ?>">
+				<?php if ($message_type === 'error'): ?>
+					<?php echo nl2br(h($message)); ?>
 				<?php else: ?>
-					<?php echo h($komunikat); ?>
+					<?php echo h($message); ?>
 				<?php endif; ?>
-				<?php if ($zapisano_pomyslnie): ?>
+				<?php if ($saved_successfully): ?>
 					<div style="margin-top: 15px;">
-						<a href="<?php echo h($base_path); ?>/" class="btn-powrot-sukces">
-							← Powrót do listy zakupów
+						<a href="<?php echo h($base_path); ?>/" class="btn-return-success">
+							<?php _e('editor.back_to_list'); ?>
 						</a>
 					</div>
 				<?php endif; ?>
@@ -1449,122 +1460,127 @@ if (!is_array($produkty_sklepy)) {
                 <span class="search-icon">🔍</span>
                 <input type="text" 
                        id="searchInput" 
-                       placeholder="Szukaj sklepu lub produktu..."
+                       placeholder="<?php _e('editor.search_placeholder'); ?>"
                        autocomplete="off">
-                <button type="button" class="search-clear" id="searchClear" title="Wyczyść wyszukiwanie">✕</button>
+                <button type="button" class="search-clear" id="searchClear" title="<?php _e('editor.clear_search'); ?>">✕</button>
             </div>
             <div class="toolbar-actions">
-                <button type="button" class="btn-toolbar" id="btnRozwinWszystkie" title="Rozwiń wszystkie sklepy">
-                    📂 Rozwiń
+                <button type="button" class="btn-toolbar" id="btnExpandAll" title="<?php _e('editor.expand_all'); ?>">
+                    📂 <?php _e('editor.expand'); ?>
                 </button>
-                <button type="button" class="btn-toolbar" id="btnZwinWszystkie" title="Zwiń wszystkie sklepy">
-                    📁 Zwiń
+                <button type="button" class="btn-toolbar" id="btnCollapseAll" title="<?php _e('editor.collapse_all'); ?>">
+                    📁 <?php _e('editor.collapse'); ?>
                 </button>
             </div>
         </div>
 
-        <form method="POST" id="formEdycja">
+        <form method="POST" id="editForm">
             <!-- CSRF token -->
             <input type="hidden" name="_csrf" value="<?php echo h(csrf_token()); ?>">
 
-            <div id="kontenerSklepy">
-                <?php $sklep_index = 0; ?>
-                <?php foreach ($produkty_sklepy as $sklep_nazwa => $produkty): ?>
-                    <div class="sklep-edytor" data-sklep-index="<?php echo $sklep_index; ?>" draggable="true">
-                        <div class="sklep-naglowek" onclick="toggleSklep(this)">
+            <div id="storesContainer">
+                <?php $store_index = 0; ?>
+                <?php foreach ($products_by_store as $store_name => $products): ?>
+                    <div class="store-editor" data-store-index="<?php echo $store_index; ?>" draggable="true">
+                        <div class="store-header" onclick="toggleStore(this)">
                             <span class="toggle-icon">▼</span>
-                            <span class="sklep-naglowek-drag" 
+                            <span class="store-header-drag" 
                                   draggable="true"
                                   onclick="event.stopPropagation()"
-                                  title="Przeciągnij, aby zmienić kolejność">☰</span>
+                                  title="<?php _e('editor.drag_to_reorder'); ?>">☰</span>
                             <input type="text" 
-                                   name="sklepy[<?php echo $sklep_index; ?>][nazwa]" 
-                                   value="<?php echo h($sklep_nazwa); ?>"
-                                   placeholder="Nazwa sklepu"
+                                   name="stores[<?php echo $store_index; ?>][name]" 
+                                   value="<?php echo h($store_name); ?>"
+                                   placeholder="<?php _e('editor.store_name'); ?>"
                                    required
                                    onclick="event.stopPropagation()"
-                                   aria-label="Nazwa sklepu">
-                            <span class="licznik-produktow">
-                                📦 <span class="liczba-produktow"><?php echo count($produkty); ?></span>
+                                   aria-label="<?php _e('editor.store_name'); ?>">
+                            <span class="product-counter">
+                                📦 <span class="product-count"><?php echo count($products); ?></span>
                             </span>
-                            <div class="sklep-akcje" onclick="event.stopPropagation()">
-                                <button type="button" class="btn-usun-sklep" onclick="usunSklep(this)" title="Usuń sklep">
-                                    🗑️ Usuń
+                            <div class="store-actions" onclick="event.stopPropagation()">
+                                <button type="button" class="btn-delete-store" onclick="deleteStore(this)" title="<?php _e('editor.delete_store'); ?>">
+                                    🗑️ <?php _e('editor.delete'); ?>
                                 </button>
                             </div>
                         </div>
                         
-                        <div class="sklep-zawartość">
-                            <div class="produkty-kontener">
-                                <?php if (empty($produkty)): ?>
-                                    <div class="pusty-sklep-info">
-                                        Brak produktów. Dodaj pierwszy produkt poniżej.
+                        <div class="store-content">
+                            <div class="products-container">
+                                <?php if (empty($products)): ?>
+                                    <div class="empty-store-info">
+                                        <?php _e('editor.no_products'); ?>
                                     </div>
                                 <?php else: ?>
-                                    <?php $produkt_index = 0; ?>
-                                    <?php foreach ($produkty as $produkt): ?>
-                                        <div class="produkt-edytor" draggable="true">
-                                            <span class="produkt-drag-handle" title="Przeciągnij, aby zmienić kolejność">☰</span>
+                                    <?php $product_index = 0; ?>
+                                    <?php foreach ($products as $product): ?>
+                                        <div class="product-editor" draggable="true">
+                                            <span class="product-drag-handle" title="<?php _e('editor.drag_to_reorder'); ?>">☰</span>
                                             <input type="text" 
-                                                   name="sklepy[<?php echo $sklep_index; ?>][produkty][<?php echo $produkt_index; ?>][name]"
-                                                   value="<?php echo h($produkt['name']); ?>"
-                                                   placeholder="Nazwa produktu"
+                                                   name="stores[<?php echo $store_index; ?>][products][<?php echo $product_index; ?>][name]"
+                                                   value="<?php echo h($product['name']); ?>"
+                                                   placeholder="<?php _e('editor.product_name'); ?>"
                                                    required
                                                    oninput="checkDuplicates(this)"
-                                                   aria-label="Nazwa produktu">
+                                                   aria-label="<?php _e('editor.product_name'); ?>">
                                             <input type="text" 
-                                                   name="sklepy[<?php echo $sklep_index; ?>][produkty][<?php echo $produkt_index; ?>][unit]"
-                                                   value="<?php echo h($produkt['unit']); ?>"
-                                                   placeholder="np. kg, szt, l"
+                                                   name="stores[<?php echo $store_index; ?>][products][<?php echo $product_index; ?>][unit]"
+                                                   value="<?php echo h($product['unit']); ?>"
+                                                   placeholder="<?php _e('editor.unit_placeholder'); ?>"
                                                    required
-                                                   aria-label="Jednostka">
-                                            <div class="produkt-akcje">
-												<button type="button" class="btn-usun-produkt" onclick="usunProdukt(this)" title="Usuń produkt">🗑️</button>
-												<button type="button" class="btn-dodaj-ponizej" onclick="dodajProduktPonizej(this)" title="Dodaj produkt poniżej">➕</button>
+                                                   aria-label="<?php _e('editor.unit'); ?>">
+                                            <div class="product-actions">
+												<button type="button" class="btn-delete-product" onclick="deleteProduct(this)" title="<?php _e('editor.delete_product'); ?>">🗑️</button>
+												<button type="button" class="btn-add-below" onclick="addProductBelow(this)" title="<?php _e('editor.add_product_below'); ?>">➕</button>
 											</div>
                                         </div>
-                                        <?php $produkt_index++; ?>
+                                        <?php $product_index++; ?>
                                     <?php endforeach; ?>
                                 <?php endif; ?>
                             </div>
                             
                             <!-- DODAJ PRODUKT NA DOLE -->
-                            <div class="dodaj-produkt-dol">
-                                <button type="button" class="btn-dodaj" onclick="dodajProdukt(this, false)">
-                                    ➕ Dodaj produkt
+                            <div class="add-product-bottom">
+                                <button type="button" class="btn-add" onclick="addProduct(this, false)">
+                                    ➕ <?php _e('editor.add_product'); ?>
                                 </button>
                             </div>
                         </div>
                     </div>
-                    <?php $sklep_index++; ?>
+                    <?php $store_index++; ?>
                 <?php endforeach; ?>
             </div>
 
             <!-- Info o braku wyników wyszukiwania -->
-            <div id="brakWynikow" class="brak-wynikow" style="display: none;">
-                <div class="brak-wynikow-icon">🔍</div>
-                <h3>Nie znaleziono wyników</h3>
-                <p>Spróbuj użyć innych słów kluczowych</p>
+            <div id="noResults" class="no-results" style="display: none;">
+                <div class="no-results-icon">🔍</div>
+                <h3><?php _e('editor.no_results'); ?></h3>
+                <p><?php _e('editor.try_different_keywords'); ?></p>
             </div>
 
-            <button type="button" class="btn-dodaj-sklep" onclick="dodajSklep()">
-                ➕ Dodaj nowy sklep
+            <button type="button" class="btn-add-store" onclick="addStore()">
+                ➕ <?php _e('editor.add_new_store'); ?>
             </button>
 
-			<div class="przyciski-akcji">
-				<button type="submit" name="zapisz" class="btn-zapisz">💾 Zapisz zmiany</button>
-				<a href="<?php echo h($base_path); ?>/" class="btn-anuluj">❌ Anuluj</a>
+			<div class="action-buttons">
+				<button type="submit" name="save" class="btn-save">💾 <?php _e('editor.save_changes'); ?></button>
+				<a href="<?php echo h($base_path); ?>/" class="btn-cancel">❌ <?php _e('editor.cancel'); ?></a>
 			</div>
         </form>
     </div>
 
 	<script>
-		// Ścieżka bazowa (z PHP) - bezpiecznie enkodowana
+		// ========================================
+		// KONFIGURACJA Z PHP / CONFIG FROM PHP
+		// ========================================
+		
 		const BASE_PATH = <?php echo json_encode($base_path); ?>;
-		// CSRF token (przydatne jeśli trzeba manipulować formularzem przez JS)
 		const CSRF_TOKEN = <?php echo json_encode(csrf_token()); ?>;
 		
-		let sklepCounter = <?php echo (int)$sklep_index; ?>;
+		// Tłumaczenia dla JS / Translations for JS
+		const T = <?php echo json_encode($js_translations); ?>;
+		
+		let storeCounter = <?php echo (int)$store_index; ?>;
 		let draggedElement = null;
 		let draggedType = null;
 
@@ -1597,7 +1613,7 @@ if (!is_array($produkty_sklepy)) {
             return dp[m][n];
         }
 
-        function normalizujString(str) {
+        function normalizeString(str) {
             return str.toLowerCase()
                 .trim()
                 .replace(/\s+/g, ' ')
@@ -1606,57 +1622,57 @@ if (!is_array($produkty_sklepy)) {
         }
 
         function checkDuplicates(input) {
-            const produktDiv = input.closest('.produkt-edytor');
-            const sklepDiv = produktDiv.closest('.sklep-edytor');
-            const wartoscInput = normalizujString(input.value);
+            const productDiv = input.closest('.product-editor');
+            const storeDiv = productDiv.closest('.store-editor');
+            const inputValue = normalizeString(input.value);
             
-            // Usuń poprzednie ostrzeżenie
-            const stareBadge = produktDiv.querySelector('.duplicate-badge');
-            if (stareBadge) stareBadge.remove();
-            produktDiv.classList.remove('duplicate-warning');
+            // Usuń poprzednie ostrzeżenie / Remove previous warning
+            const oldBadge = productDiv.querySelector('.duplicate-badge');
+            if (oldBadge) oldBadge.remove();
+            productDiv.classList.remove('duplicate-warning');
 
-            if (wartoscInput.length < 2) return;
+            if (inputValue.length < 2) return;
 
-            // Sprawdź duplikaty w tym samym sklepie
-            const produkty = sklepDiv.querySelectorAll('.produkt-edytor');
-            let znalezionoDuplikat = false;
+            // Sprawdź duplikaty w tym samym sklepie / Check duplicates in same store
+            const products = storeDiv.querySelectorAll('.product-editor');
+            let foundDuplicate = false;
 
-            produkty.forEach(innyProdukt => {
-                if (innyProdukt === produktDiv) return;
+            products.forEach(otherProduct => {
+                if (otherProduct === productDiv) return;
                 
-                const innyInput = innyProdukt.querySelector('input[name*="[name]"]');
-                const innaWartosc = normalizujString(innyInput.value);
+                const otherInput = otherProduct.querySelector('input[name*="[name]"]');
+                const otherValue = normalizeString(otherInput.value);
                 
-                if (innaWartosc.length < 2) return;
+                if (otherValue.length < 2) return;
 
-                // Dokładne dopasowanie
-                if (wartoscInput === innaWartosc) {
-                    znalezionoDuplikat = true;
+                // Dokładne dopasowanie / Exact match
+                if (inputValue === otherValue) {
+                    foundDuplicate = true;
                     return;
                 }
 
-                // Fuzzy matching - próg 80% podobieństwa
-                const distance = levenshteinDistance(wartoscInput, innaWartosc);
-                const maxLen = Math.max(wartoscInput.length, innaWartosc.length);
+                // Fuzzy matching - próg 80% podobieństwa / 80% similarity threshold
+                const distance = levenshteinDistance(inputValue, otherValue);
+                const maxLen = Math.max(inputValue.length, otherValue.length);
                 const similarity = 1 - (distance / maxLen);
 
                 if (similarity >= 0.8) {
-                    znalezionoDuplikat = true;
+                    foundDuplicate = true;
                 }
             });
 
-            if (znalezionoDuplikat) {
-                produktDiv.classList.add('duplicate-warning');
+            if (foundDuplicate) {
+                productDiv.classList.add('duplicate-warning');
                 const badge = document.createElement('span');
                 badge.className = 'duplicate-badge';
                 badge.textContent = '⚠️';
-                badge.title = 'Możliwy duplikat produktu';
-                produktDiv.appendChild(badge);
+                badge.title = T.possible_duplicate || 'Possible duplicate';
+                productDiv.appendChild(badge);
             }
         }
 
         // ========================================
-        // WYSZUKIWANIE Z PRZYCISKIEM CZYSZCZENIA
+        // WYSZUKIWANIE / SEARCH
         // ========================================
 
         let searchTimeout;
@@ -1666,7 +1682,7 @@ if (!is_array($produkty_sklepy)) {
         searchInput?.addEventListener('input', (e) => {
             clearTimeout(searchTimeout);
             
-            // Pokaż/ukryj przycisk X
+            // Pokaż/ukryj przycisk X / Show/hide X button
             if (e.target.value) {
                 searchClear.classList.add('visible');
             } else {
@@ -1674,79 +1690,79 @@ if (!is_array($produkty_sklepy)) {
             }
             
             searchTimeout = setTimeout(() => {
-                filterSklepy(e.target.value);
+                filterStores(e.target.value);
             }, 300);
         });
 
         searchClear?.addEventListener('click', () => {
             searchInput.value = '';
             searchClear.classList.remove('visible');
-            filterSklepy('');
+            filterStores('');
             searchInput.focus();
         });
 
-        function filterSklepy(query) {
+        function filterStores(query) {
             const search = query.toLowerCase().trim();
-            const sklepy = document.querySelectorAll('.sklep-edytor');
+            const stores = document.querySelectorAll('.store-editor');
             let visibleCount = 0;
 
             if (!search) {
-                sklepy.forEach(sklep => {
-                    sklep.classList.remove('hidden');
-                    sklep.querySelectorAll('.produkt-edytor').forEach(p => {
+                stores.forEach(store => {
+                    store.classList.remove('hidden');
+                    store.querySelectorAll('.product-editor').forEach(p => {
                         p.style.display = '';
                     });
                 });
-                document.getElementById('brakWynikow').style.display = 'none';
+                document.getElementById('noResults').style.display = 'none';
                 restoreCollapsedStates();
                 return;
             }
 
-            sklepy.forEach(sklep => {
-                const nazwaSklep = sklep.querySelector('input[name*="[nazwa]"]').value.toLowerCase();
-                const produkty = sklep.querySelectorAll('.produkt-edytor');
-                let sklepVisible = false;
+            stores.forEach(store => {
+                const storeName = store.querySelector('input[name*="[name]"]').value.toLowerCase();
+                const products = store.querySelectorAll('.product-editor');
+                let storeVisible = false;
 
-                if (nazwaSklep.includes(search)) {
-                    sklepVisible = true;
-                    produkty.forEach(p => p.style.display = '');
+                if (storeName.includes(search)) {
+                    storeVisible = true;
+                    products.forEach(p => p.style.display = '');
                 } else {
                     let visibleProducts = 0;
-                    produkty.forEach(produkt => {
-                        const nazwaProdukt = produkt.querySelector('input[name*="[name]"]').value.toLowerCase();
-                        if (nazwaProdukt.includes(search)) {
-                            produkt.style.display = '';
+                    products.forEach(product => {
+                        const productName = product.querySelector('input[name*="[name]"]').value.toLowerCase();
+                        if (productName.includes(search)) {
+                            product.style.display = '';
                             visibleProducts++;
-                            sklepVisible = true;
+                            storeVisible = true;
                         } else {
-                            produkt.style.display = 'none';
+                            product.style.display = 'none';
                         }
                     });
                 }
 
-                if (sklepVisible) {
-                    sklep.classList.remove('hidden');
-                    sklep.classList.remove('collapsed');
+                if (storeVisible) {
+                    store.classList.remove('hidden');
+                    store.classList.remove('collapsed');
                     visibleCount++;
                 } else {
-                    sklep.classList.add('hidden');
+                    store.classList.add('hidden');
                 }
             });
 
-            document.getElementById('brakWynikow').style.display = visibleCount === 0 ? 'block' : 'none';
+            document.getElementById('noResults').style.display = visibleCount === 0 ? 'block' : 'none';
         }
 
         // ========================================
-        // ZWIJANIE/ROZWIJANIE SKLEPÓW
+        // ZWIJANIE/ROZWIJANIE SKLEPÓW / COLLAPSE/EXPAND STORES
         // ========================================
 
-        function toggleSklep(naglowek) {
-            const sklep = naglowek.closest('.sklep-edytor');
-            sklep.classList.toggle('collapsed');
+        function toggleStore(header) {
+            const store = header.closest('.store-editor');
+            store.classList.toggle('collapsed');
             
-            const sklepIndex = sklep.dataset.sklepIndex;
+            const storeIndex = store.dataset.storeIndex;
             const collapsedStates = getCollapsedStates();
-            collapsedStates[sklepIndex] = sklep.classList.contains('collapsed');
+            collapsedStates[storeIndex] = store.classList.contains('collapsed');
             localStorage.setItem('shopicker_collapsed', JSON.stringify(collapsedStates));
         }
 
@@ -1757,57 +1773,57 @@ if (!is_array($produkty_sklepy)) {
 
         function restoreCollapsedStates() {
             const states = getCollapsedStates();
-            document.querySelectorAll('.sklep-edytor').forEach(sklep => {
-                const index = sklep.dataset.sklepIndex;
+            document.querySelectorAll('.store-editor').forEach(store => {
+                const index = store.dataset.storeIndex;
                 if (states[index]) {
-                    sklep.classList.add('collapsed');
+                    store.classList.add('collapsed');
                 }
             });
         }
 
-        document.getElementById('btnRozwinWszystkie')?.addEventListener('click', () => {
-            document.querySelectorAll('.sklep-edytor').forEach(sklep => {
-                sklep.classList.remove('collapsed');
+        document.getElementById('btnExpandAll')?.addEventListener('click', () => {
+            document.querySelectorAll('.store-editor').forEach(store => {
+                store.classList.remove('collapsed');
             });
             localStorage.removeItem('shopicker_collapsed');
         });
 
-        document.getElementById('btnZwinWszystkie')?.addEventListener('click', () => {
-            document.querySelectorAll('.sklep-edytor').forEach(sklep => {
-                sklep.classList.add('collapsed');
+        document.getElementById('btnCollapseAll')?.addEventListener('click', () => {
+            document.querySelectorAll('.store-editor').forEach(store => {
+                store.classList.add('collapsed');
             });
             const states = {};
-            document.querySelectorAll('.sklep-edytor').forEach(sklep => {
-                states[sklep.dataset.sklepIndex] = true;
+            document.querySelectorAll('.store-editor').forEach(store => {
+                states[store.dataset.storeIndex] = true;
             });
             localStorage.setItem('shopicker_collapsed', JSON.stringify(states));
         });
 
         // ========================================
-        // DRAG AND DROP - SKLEPY
+        // DRAG AND DROP - SKLEPY / STORES
         // ========================================
 
-        function setupSklepDragAndDrop() {
-            const sklepy = document.querySelectorAll('.sklep-edytor');
+        function setupStoreDragAndDrop() {
+            const stores = document.querySelectorAll('.store-editor');
             
-            sklepy.forEach(sklep => {
-                sklep.addEventListener('dragstart', handleSklepDragStart);
-                sklep.addEventListener('dragover', handleSklepDragOver);
-                sklep.addEventListener('drop', handleSklepDrop);
-                sklep.addEventListener('dragend', handleSklepDragEnd);
-                sklep.addEventListener('dragleave', handleSklepDragLeave);
+            stores.forEach(store => {
+                store.addEventListener('dragstart', handleStoreDragStart);
+                store.addEventListener('dragover', handleStoreDragOver);
+                store.addEventListener('drop', handleStoreDrop);
+                store.addEventListener('dragend', handleStoreDragEnd);
+                store.addEventListener('dragleave', handleStoreDragLeave);
             });
         }
 
-        function handleSklepDragStart(e) {
+        function handleStoreDragStart(e) {
             draggedElement = this;
-            draggedType = 'sklep';
+            draggedType = 'store';
             this.classList.add('dragging');
             e.dataTransfer.effectAllowed = 'move';
         }
 
-        function handleSklepDragOver(e) {
-            if (draggedType !== 'sklep') return;
+        function handleStoreDragOver(e) {
+            if (draggedType !== 'store') return;
             e.preventDefault();
             e.dataTransfer.dropEffect = 'move';
             
@@ -1821,49 +1837,49 @@ if (!is_array($produkty_sklepy)) {
             this.classList.add('drag-over');
         }
 
-        function handleSklepDrop(e) {
-            if (draggedType !== 'sklep') return;
+        function handleStoreDrop(e) {
+            if (draggedType !== 'store') return;
             e.preventDefault();
             e.stopPropagation();
             this.classList.remove('drag-over');
-            aktualizujIndeksySklepow();
-            formZmieniony = true;
+            updateStoreIndexes();
+            formChanged = true;
         }
 
-        function handleSklepDragEnd(e) {
+        function handleStoreDragEnd(e) {
             this.classList.remove('dragging');
-            document.querySelectorAll('.sklep-edytor').forEach(s => s.classList.remove('drag-over'));
+            document.querySelectorAll('.store-editor').forEach(s => s.classList.remove('drag-over'));
         }
 
-        function handleSklepDragLeave(e) {
+        function handleStoreDragLeave(e) {
             this.classList.remove('drag-over');
         }
 
         // ========================================
-        // DRAG AND DROP - PRODUKTY
+        // DRAG AND DROP - PRODUKTY / PRODUCTS
         // ========================================
 
-        function setupProduktDragAndDrop() {
-            const produkty = document.querySelectorAll('.produkt-edytor');
+        function setupProductDragAndDrop() {
+            const products = document.querySelectorAll('.product-editor');
             
-            produkty.forEach(produkt => {
-                produkt.addEventListener('dragstart', handleProduktDragStart);
-                produkt.addEventListener('dragover', handleProduktDragOver);
-                produkt.addEventListener('drop', handleProduktDrop);
-                produkt.addEventListener('dragend', handleProduktDragEnd);
+            products.forEach(product => {
+                product.addEventListener('dragstart', handleProductDragStart);
+                product.addEventListener('dragover', handleProductDragOver);
+                product.addEventListener('drop', handleProductDrop);
+                product.addEventListener('dragend', handleProductDragEnd);
             });
         }
 
-        function handleProduktDragStart(e) {
+        function handleProductDragStart(e) {
             draggedElement = this;
-            draggedType = 'produkt';
+            draggedType = 'product';
             this.classList.add('dragging');
             e.dataTransfer.effectAllowed = 'move';
             e.stopPropagation();
         }
 
-        function handleProduktDragOver(e) {
-            if (draggedType !== 'produkt') return;
+        function handleProductDragOver(e) {
+            if (draggedType !== 'product') return;
             if (this.parentElement !== draggedElement.parentElement) return;
             
             e.preventDefault();
@@ -1878,28 +1894,28 @@ if (!is_array($produkty_sklepy)) {
             }
         }
 
-        function handleProduktDrop(e) {
-            if (draggedType !== 'produkt') return;
+        function handleProductDrop(e) {
+            if (draggedType !== 'product') return;
             e.preventDefault();
             e.stopPropagation();
             
-            const sklepDiv = this.closest('.sklep-edytor');
-            const sklepIndex = sklepDiv.dataset.sklepIndex;
-            aktualizujIndeksyProduktow(sklepDiv, sklepIndex);
-            formZmieniony = true;
+            const storeDiv = this.closest('.store-editor');
+            const storeIndex = storeDiv.dataset.storeIndex;
+            updateProductIndexes(storeDiv, storeIndex);
+            formChanged = true;
         }
 
-        function handleProduktDragEnd(e) {
+        function handleProductDragEnd(e) {
             this.classList.remove('dragging');
             e.stopPropagation();
         }
 
         // ========================================
-        // FUNKCJE POMOCNICZE
+        // FUNKCJE POMOCNICZE / HELPER FUNCTIONS
         // ========================================
 
         function getDragAfterElement(container, y) {
-            const draggableElements = [...container.querySelectorAll('.sklep-edytor:not(.dragging), .produkt-edytor:not(.dragging)')];
+            const draggableElements = [...container.querySelectorAll('.store-editor:not(.dragging), .product-editor:not(.dragging)')];
             
             return draggableElements.reduce((closest, child) => {
                 const box = child.getBoundingClientRect();
@@ -1913,301 +1929,299 @@ if (!is_array($produkty_sklepy)) {
             }, { offset: Number.NEGATIVE_INFINITY }).element;
         }
 
-        function aktualizujIndeksySklepow() {
-            const sklepy = document.querySelectorAll('.sklep-edytor');
-            sklepy.forEach((sklep, index) => {
-                sklep.dataset.sklepIndex = index;
-                const nazwaInput = sklep.querySelector('input[name^="sklepy["]');
-                nazwaInput.name = `sklepy[${index}][nazwa]`;
+        function updateStoreIndexes() {
+            const stores = document.querySelectorAll('.store-editor');
+            stores.forEach((store, index) => {
+                store.dataset.storeIndex = index;
+                const nameInput = store.querySelector('input[name^="stores["]');
+                nameInput.name = `stores[${index}][name]`;
                 
-                aktualizujIndeksyProduktow(sklep, index);
+                updateProductIndexes(store, index);
             });
         }
 
-        function aktualizujIndeksyProduktow(sklepDiv, sklepIndex) {
-            const produkty = sklepDiv.querySelectorAll('.produkt-edytor');
-            produkty.forEach((produkt, pIndex) => {
-                const inputy = produkt.querySelectorAll('input[type="text"]');
-                inputy[0].name = `sklepy[${sklepIndex}][produkty][${pIndex}][name]`;
-                inputy[1].name = `sklepy[${sklepIndex}][produkty][${pIndex}][unit]`;
+        function updateProductIndexes(storeDiv, storeIndex) {
+            const products = storeDiv.querySelectorAll('.product-editor');
+            products.forEach((product, pIndex) => {
+                const inputs = product.querySelectorAll('input[type="text"]');
+                inputs[0].name = `stores[${storeIndex}][products][${pIndex}][name]`;
+                inputs[1].name = `stores[${storeIndex}][products][${pIndex}][unit]`;
             });
             
-            aktualizujLicznikProduktow(sklepDiv);
+            updateProductCounter(storeDiv);
         }
 
-        function aktualizujLicznikProduktow(sklepDiv) {
-            const licznik = sklepDiv.querySelector('.liczba-produktow');
-            const iloscProduktow = sklepDiv.querySelectorAll('.produkt-edytor').length;
-            if (licznik) {
-                licznik.textContent = iloscProduktow;
+        function updateProductCounter(storeDiv) {
+            const counter = storeDiv.querySelector('.product-count');
+            const productCount = storeDiv.querySelectorAll('.product-editor').length;
+            if (counter) {
+                counter.textContent = productCount;
             }
             
-            // Aktualizuj licznik w górnym pasku jeśli to aktualnie widoczny sklep
-            updateCurrentShopProductCount(sklepDiv);
+            // Aktualizuj licznik w górnym pasku / Update counter in top bar
+            updateCurrentStoreProductCount(storeDiv);
         }
 
-        function updateCurrentShopProductCount(sklepDiv) {
-            const currentProductCount = document.getElementById('currentShopProductCount');
-            const rect = sklepDiv.getBoundingClientRect();
+        function updateCurrentStoreProductCount(storeDiv) {
+            const currentProductCount = document.getElementById('currentStoreProductCount');
+            const rect = storeDiv.getBoundingClientRect();
             const windowHeight = window.innerHeight;
             
-            // Sprawdź czy ten sklep jest w centrum ekranu
+            // Sprawdź czy ten sklep jest w centrum ekranu / Check if store is in center
             if (rect.top < windowHeight / 2 && rect.bottom > windowHeight / 2) {
-                const produktyCount = sklepDiv.querySelectorAll('.produkt-edytor').length;
-                currentProductCount.textContent = produktyCount;
+                const productsCount = storeDiv.querySelectorAll('.product-editor').length;
+                currentProductCount.textContent = productsCount;
             }
         }
 
         // ========================================
-        // DODAWANIE/USUWANIE ELEMENTÓW
+        // DODAWANIE/USUWANIE ELEMENTÓW / ADD/DELETE ELEMENTS
         // ========================================
 
-        function dodajSklep() {
-            const kontener = document.getElementById('kontenerSklepy');
-            const nowyIndex = sklepCounter++;
+        function addStore() {
+            const container = document.getElementById('storesContainer');
+            const newIndex = storeCounter++;
             
-            const sklepHTML = `
-                <div class="sklep-edytor" data-sklep-index="${nowyIndex}" draggable="true">
-                    <div class="sklep-naglowek" onclick="toggleSklep(this)">
+            const storeHTML = `
+                <div class="store-editor" data-store-index="${newIndex}" draggable="true">
+                    <div class="store-header" onclick="toggleStore(this)">
                         <span class="toggle-icon">▼</span>
-                        <span class="sklep-naglowek-drag" 
+                        <span class="store-header-drag" 
                               draggable="true"
                               onclick="event.stopPropagation()"
-                              title="Przeciągnij, aby zmienić kolejność">☰</span>
+                              title="${T.drag_to_reorder || 'Drag to reorder'}">☰</span>
                         <input type="text" 
-                               name="sklepy[${nowyIndex}][nazwa]" 
-                               placeholder="Nazwa sklepu"
+                               name="stores[${newIndex}][name]" 
+                               placeholder="${T.store_name || 'Store name'}"
                                required
                                onclick="event.stopPropagation()"
-                               aria-label="Nazwa sklepu">
-                        <span class="licznik-produktow">
-                            📦 <span class="liczba-produktow">0</span>
+                               aria-label="${T.store_name || 'Store name'}">
+                        <span class="product-counter">
+                            📦 <span class="product-count">0</span>
                         </span>
-                        <div class="sklep-akcje" onclick="event.stopPropagation()">
-                            <button type="button" class="btn-usun-sklep" onclick="usunSklep(this)" title="Usuń sklep">
-                                🗑️ Usuń
+                        <div class="store-actions" onclick="event.stopPropagation()">
+                            <button type="button" class="btn-delete-store" onclick="deleteStore(this)" title="${T.delete_store || 'Delete store'}">
+                                🗑️ ${T.delete || 'Delete'}
                             </button>
                         </div>
                     </div>
                     
-                    <div class="sklep-zawartość">
-                        <div class="produkty-kontener">
-                            <div class="pusty-sklep-info">
-                                Brak produktów. Dodaj pierwszy produkt poniżej.
+                    <div class="store-content">
+                        <div class="products-container">
+                            <div class="empty-store-info">
+                                ${T.no_products || 'No products. Add your first product below.'}
                             </div>
                         </div>
                         
-                        <div class="dodaj-produkt-dol">
-                            <button type="button" class="btn-dodaj" onclick="dodajProdukt(this, false)">
-                                ➕ Dodaj produkt
+                        <div class="add-product-bottom">
+                            <button type="button" class="btn-add" onclick="addProduct(this, false)">
+                                ➕ ${T.add_product || 'Add product'}
                             </button>
                         </div>
                     </div>
                 </div>
             `;
             
-            kontener.insertAdjacentHTML('beforeend', sklepHTML);
-            setupSklepDragAndDrop();
-            setupProduktDragAndDrop();
-            formZmieniony = true;
+            container.insertAdjacentHTML('beforeend', storeHTML);
+            setupStoreDragAndDrop();
+            setupProductDragAndDrop();
+            formChanged = true;
             
             setTimeout(() => {
-                const nowyElement = kontener.lastElementChild;
-                nowyElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                nowyElement.querySelector('input').focus();
+                const newElement = container.lastElementChild;
+                newElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                newElement.querySelector('input').focus();
             }, 100);
         }
 
-        function dodajProdukt(button, naGorze = false) {
-            const sklepDiv = button.closest('.sklep-edytor');
-            const sklepIndex = sklepDiv.dataset.sklepIndex;
-            const produktyKontener = sklepDiv.querySelector('.produkty-kontener');
+        function addProduct(button, atTop = false) {
+            const storeDiv = button.closest('.store-editor');
+            const storeIndex = storeDiv.dataset.storeIndex;
+            const productsContainer = storeDiv.querySelector('.products-container');
             
-            const pustyInfo = produktyKontener.querySelector('.pusty-sklep-info');
-            if (pustyInfo) {
-                pustyInfo.remove();
+            const emptyInfo = productsContainer.querySelector('.empty-store-info');
+            if (emptyInfo) {
+                emptyInfo.remove();
             }
             
-            const aktualnaIlosc = produktyKontener.querySelectorAll('.produkt-edytor').length;
+            const currentCount = productsContainer.querySelectorAll('.product-editor').length;
             
-            const produktHTML = `
-                <div class="produkt-edytor" draggable="true">
-                    <span class="produkt-drag-handle" title="Przeciągnij, aby zmienić kolejność">☰</span>
+            const productHTML = `
+                <div class="product-editor" draggable="true">
+                    <span class="product-drag-handle" title="${T.drag_to_reorder || 'Drag to reorder'}">☰</span>
                     <input type="text" 
-                           name="sklepy[${sklepIndex}][produkty][${aktualnaIlosc}][name]"
-                           placeholder="Nazwa produktu"
+                           name="stores[${storeIndex}][products][${currentCount}][name]"
+                           placeholder="${T.product_name || 'Product name'}"
                            required
                            oninput="checkDuplicates(this)"
-                           aria-label="Nazwa produktu">
+                           aria-label="${T.product_name || 'Product name'}">
                     <input type="text" 
-                           name="sklepy[${sklepIndex}][produkty][${aktualnaIlosc}][unit]"
-                           placeholder="np. kg, szt, l"
+                           name="stores[${storeIndex}][products][${currentCount}][unit]"
+                           placeholder="${T.unit_placeholder || 'e.g. kg, pcs, l'}"
                            required
-                           aria-label="Jednostka">
-                    <div class="produkt-akcje">
-                        <button type="button" class="btn-usun-produkt" onclick="usunProdukt(this)" title="Usuń produkt">🗑️</button>
-                        <button type="button" class="btn-dodaj-ponizej" onclick="dodajProduktPonizej(this)" title="Dodaj produkt poniżej">➕</button>
+                           aria-label="${T.unit || 'Unit'}">
+                    <div class="product-actions">
+                        <button type="button" class="btn-delete-product" onclick="deleteProduct(this)" title="${T.delete_product || 'Delete product'}">🗑️</button>
+                        <button type="button" class="btn-add-below" onclick="addProductBelow(this)" title="${T.add_product_below || 'Add product below'}">➕</button>
                     </div>
                 </div>
 `;
             
-            if (naGorze) {
-                produktyKontener.insertAdjacentHTML('afterbegin', produktHTML);
+            if (atTop) {
+                productsContainer.insertAdjacentHTML('afterbegin', productHTML);
             } else {
-                produktyKontener.insertAdjacentHTML('beforeend', produktHTML);
+                productsContainer.insertAdjacentHTML('beforeend', productHTML);
             }
             
-            setupProduktDragAndDrop();
-            aktualizujIndeksyProduktow(sklepDiv, sklepIndex);
-            formZmieniony = true;
+            setupProductDragAndDrop();
+            updateProductIndexes(storeDiv, storeIndex);
+            formChanged = true;
             
             setTimeout(() => {
-                const nowyProdukt = naGorze ? produktyKontener.firstElementChild : produktyKontener.lastElementChild;
-                nowyProdukt.querySelector('input').focus();
+                const newProduct = atTop ? productsContainer.firstElementChild : productsContainer.lastElementChild;
+                newProduct.querySelector('input').focus();
             }, 100);
         }
 
-		function dodajProduktPonizej(button) {
-			const produktDiv = button.closest('.produkt-edytor');
-			const sklepDiv = produktDiv.closest('.sklep-edytor');
-			const sklepIndex = sklepDiv.dataset.sklepIndex;
-			const produktyKontener = sklepDiv.querySelector('.produkty-kontener');
+		function addProductBelow(button) {
+			const productDiv = button.closest('.product-editor');
+			const storeDiv = productDiv.closest('.store-editor');
+			const storeIndex = storeDiv.dataset.storeIndex;
+			const productsContainer = storeDiv.querySelector('.products-container');
 			
-			const aktualnaIlosc = produktyKontener.querySelectorAll('.produkt-edytor').length;
+			const currentCount = productsContainer.querySelectorAll('.product-editor').length;
 			
-			const produktHTML = `
-				<div class="produkt-edytor" draggable="true">
-					<span class="produkt-drag-handle" title="Przeciągnij, aby zmienić kolejność">☰</span>
+			const productHTML = `
+				<div class="product-editor" draggable="true">
+					<span class="product-drag-handle" title="${T.drag_to_reorder || 'Drag to reorder'}">☰</span>
 					<input type="text" 
-						   name="sklepy[${sklepIndex}][produkty][${aktualnaIlosc}][name]"
-						   placeholder="Nazwa produktu"
+						   name="stores[${storeIndex}][products][${currentCount}][name]"
+						   placeholder="${T.product_name || 'Product name'}"
 						   required
 						   oninput="checkDuplicates(this)"
-						   aria-label="Nazwa produktu">
+						   aria-label="${T.product_name || 'Product name'}">
 					<input type="text" 
-						   name="sklepy[${sklepIndex}][produkty][${aktualnaIlosc}][unit]"
-						   placeholder="np. kg, szt, l"
+						   name="stores[${storeIndex}][products][${currentCount}][unit]"
+						   placeholder="${T.unit_placeholder || 'e.g. kg, pcs, l'}"
 						   required
-						   aria-label="Jednostka">
-					<div class="produkt-akcje">
-						<button type="button" class="btn-usun-produkt" onclick="usunProdukt(this)" title="Usuń produkt">🗑️</button>
-						<button type="button" class="btn-dodaj-ponizej" onclick="dodajProduktPonizej(this)" title="Dodaj produkt poniżej">➕</button>
+						   aria-label="${T.unit || 'Unit'}">
+					<div class="product-actions">
+						<button type="button" class="btn-delete-product" onclick="deleteProduct(this)" title="${T.delete_product || 'Delete product'}">🗑️</button>
+						<button type="button" class="btn-add-below" onclick="addProductBelow(this)" title="${T.add_product_below || 'Add product below'}">➕</button>
 					</div>
 				</div>
 			`;
 			
-			// Wstaw nowy produkt bezpośrednio po aktualnym
-			produktDiv.insertAdjacentHTML('afterend', produktHTML);
+			// Wstaw nowy produkt bezpośrednio po aktualnym / Insert after current
+			productDiv.insertAdjacentHTML('afterend', productHTML);
 			
-			setupProduktDragAndDrop();
-			aktualizujIndeksyProduktow(sklepDiv, sklepIndex);
-			formZmieniony = true;
+			setupProductDragAndDrop();
+			updateProductIndexes(storeDiv, storeIndex);
+			formChanged = true;
 			
-			// Focus na nowym produkcie
+			// Focus na nowym produkcie / Focus on new product
 			setTimeout(() => {
-				const nowyProdukt = produktDiv.nextElementSibling;
-				nowyProdukt.scrollIntoView({ behavior: 'smooth', block: 'center' });
-				nowyProdukt.querySelector('input').focus();
+				const newProduct = productDiv.nextElementSibling;
+				newProduct.scrollIntoView({ behavior: 'smooth', block: 'center' });
+				newProduct.querySelector('input').focus();
 			}, 100);
 		}
 
-        function usunProdukt(button) {
-            if (confirm('Czy na pewno usunąć ten produkt?')) {
-                const produktDiv = button.closest('.produkt-edytor');
-                const sklepDiv = produktDiv.closest('.sklep-edytor');
-                const sklepIndex = sklepDiv.dataset.sklepIndex;
-                const produktyKontener = sklepDiv.querySelector('.produkty-kontener');
+        function deleteProduct(button) {
+            if (confirm(T.confirm_delete_product || 'Are you sure you want to delete this product?')) {
+                const productDiv = button.closest('.product-editor');
+                const storeDiv = productDiv.closest('.store-editor');
+                const storeIndex = storeDiv.dataset.storeIndex;
+                const productsContainer = storeDiv.querySelector('.products-container');
                 
-                produktDiv.remove();
-                aktualizujIndeksyProduktow(sklepDiv, sklepIndex);
+                productDiv.remove();
+                updateProductIndexes(storeDiv, storeIndex);
                 
-                if (produktyKontener.querySelectorAll('.produkt-edytor').length === 0) {
-                    produktyKontener.innerHTML = '<div class="pusty-sklep-info">Brak produktów. Dodaj pierwszy produkt poniżej.</div>';
-                    aktualizujLicznikProduktow(sklepDiv);
+                if (productsContainer.querySelectorAll('.product-editor').length === 0) {
+                    productsContainer.innerHTML = `<div class="empty-store-info">${T.no_products || 'No products. Add your first product below.'}</div>`;
+                    updateProductCounter(storeDiv);
                 }
                 
-                formZmieniony = true;
+                formChanged = true;
             }
         }
 
-        function usunSklep(button) {
-            if (confirm('Czy na pewno usunąć cały sklep z wszystkimi produktami?')) {
-                button.closest('.sklep-edytor').remove();
-                aktualizujIndeksySklepow();
-                formZmieniony = true;
+        function deleteStore(button) {
+            if (confirm(T.confirm_delete_store || 'Are you sure you want to delete this entire store with all products?')) {
+                button.closest('.store-editor').remove();
+                updateStoreIndexes();
+                formChanged = true;
             }
         }
 
         // ========================================
-        // PŁYWAJĄCY PRZYCISK ZAPISZ
+        // PŁYWAJĄCY PRZYCISK ZAPISZ / FLOATING SAVE BUTTON
         // ========================================
 
-        let plywajacyPrzyciskElement = null;
+        let floatingButtonElement = null;
         let lastScrollTop = 0;
 
-        function pokazPrzycisk() {
-            if (!plywajacyPrzyciskElement) return;
+        function showFloatingButton() {
+            if (!floatingButtonElement) return;
             
             const scrollPos = window.scrollY || document.documentElement.scrollTop;
             
             if (scrollPos > 200 && scrollPos > lastScrollTop) {
-                plywajacyPrzyciskElement.style.display = 'block';
+                floatingButtonElement.style.display = 'block';
             } else if (scrollPos < 100) {
-                plywajacyPrzyciskElement.style.display = 'none';
+                floatingButtonElement.style.display = 'none';
             }
             
             lastScrollTop = scrollPos <= 0 ? 0 : scrollPos;
         }
 
-        function submitFormZPlywajecgo() {
-            const formEdycja = document.getElementById('formEdycja');
-            const przyciskZapisz = formEdycja.querySelector('button[name="zapisz"]');
+        function submitFromFloating() {
+            const editForm = document.getElementById('editForm');
+            const saveButton = editForm.querySelector('button[name="save"]');
             
-            if (przyciskZapisz) {
-                przyciskZapisz.click();
+            if (saveButton) {
+                saveButton.click();
             } else {
                 const hiddenInput = document.createElement('input');
                 hiddenInput.type = 'hidden';
-                hiddenInput.name = 'zapisz';
+                hiddenInput.name = 'save';
                 hiddenInput.value = '1';
-                formEdycja.appendChild(hiddenInput);
-                formEdycja.submit();
+                editForm.appendChild(hiddenInput);
+                editForm.submit();
             }
         }
 
         // ========================================
-        // WSKAŹNIK AKTUALNEGO SKLEPU
+        // WSKAŹNIK AKTUALNEGO SKLEPU / CURRENT STORE INDICATOR
         // ========================================
 
-        function updateCurrentShopIndicator() {
-            const currentShopName = document.getElementById('currentShopName');
-            const currentProductCount = document.getElementById('currentShopProductCount');
+        function updateCurrentStoreIndicator() {
+            const currentStoreName = document.getElementById('currentStoreName');
+            const currentProductCount = document.getElementById('currentStoreProductCount');
             
             // Intersection Observer do śledzenia który sklep jest w centrum
             const observerOptions = {
                 root: null,
-                rootMargin: '-50% 0px -50% 0px', // Centrum viewport
+                rootMargin: '-50% 0px -50% 0px',
                 threshold: 0
             };
 
             const observer = new IntersectionObserver((entries) => {
                 entries.forEach(entry => {
                     if (entry.isIntersecting) {
-                        const shopInput = entry.target.querySelector('.sklep-naglowek input[type="text"]');
-                        const productCountEl = entry.target.querySelector('.liczba-produktow');
+                        const storeInput = entry.target.querySelector('.store-header input[type="text"]');
+                        const productCountEl = entry.target.querySelector('.product-count');
                         
-                        if (shopInput) {
-                            const shopName = shopInput.value.trim();
+                        if (storeInput) {
+                            const storeName = storeInput.value.trim();
                             const productCount = productCountEl ? productCountEl.textContent : '0';
-                            const indicator = document.getElementById('currentShopIndicator');
+                            const indicator = document.getElementById('currentStoreIndicator');
                             
-                            // Pokaż tylko jeśli jest nazwa sklepu
-                            if (shopName) {
-                                currentShopName.textContent = shopName;
+                            if (storeName) {
+                                currentStoreName.textContent = storeName;
                                 currentProductCount.textContent = productCount;
                                 indicator.classList.add('visible');
                                 
-                                // Delikatna animacja
                                 indicator.style.transform = 'scale(1.05)';
                                 setTimeout(() => {
                                     indicator.style.transform = 'scale(1)';
@@ -2217,10 +2231,9 @@ if (!is_array($produkty_sklepy)) {
                             }
                         }
                     } else {
-                        // Gdy sklep opuszcza centrum, ukryj wskaźnik
-                        const indicator = document.getElementById('currentShopIndicator');
-                        const allIntersecting = Array.from(document.querySelectorAll('.sklep-edytor')).some(shop => {
-                            const rect = shop.getBoundingClientRect();
+                        const indicator = document.getElementById('currentStoreIndicator');
+                        const allIntersecting = Array.from(document.querySelectorAll('.store-editor')).some(store => {
+                            const rect = store.getBoundingClientRect();
                             const windowHeight = window.innerHeight;
                             return rect.top < windowHeight / 2 && rect.bottom > windowHeight / 2;
                         });
@@ -2232,99 +2245,97 @@ if (!is_array($produkty_sklepy)) {
                 });
             }, observerOptions);
 
-            // Obserwuj wszystkie sklepy
-            document.querySelectorAll('.sklep-edytor').forEach(shop => {
-                observer.observe(shop);
+            document.querySelectorAll('.store-editor').forEach(store => {
+                observer.observe(store);
             });
 
-            // Aktualizuj gdy zmieniamy nazwę sklepu
+            // Aktualizuj gdy zmieniamy nazwę sklepu / Update on store name change
             document.addEventListener('input', (e) => {
-                if (e.target.matches('.sklep-naglowek input[type="text"]')) {
-                    const shop = e.target.closest('.sklep-edytor');
-                    const rect = shop.getBoundingClientRect();
+                if (e.target.matches('.store-header input[type="text"]')) {
+                    const store = e.target.closest('.store-editor');
+                    const rect = store.getBoundingClientRect();
                     const windowHeight = window.innerHeight;
                     
-                    // Sprawdź czy ten sklep jest w centrum
                     if (rect.top < windowHeight / 2 && rect.bottom > windowHeight / 2) {
-                        const shopName = e.target.value.trim() || 'Nowy sklep';
-                        currentShopName.textContent = shopName;
+                        const storeName = e.target.value.trim() || (T.new_store || 'New store');
+                        currentStoreName.textContent = storeName;
                     }
                 }
             });
 
-            // Re-obserwuj gdy sklepy są dodawane/usuwane
+            // Re-obserwuj gdy sklepy są dodawane/usuwane / Re-observe on store add/remove
             const containerObserver = new MutationObserver(() => {
                 observer.disconnect();
-                document.querySelectorAll('.sklep-edytor').forEach(shop => {
-                    observer.observe(shop);
+                document.querySelectorAll('.store-editor').forEach(store => {
+                    observer.observe(store);
                 });
             });
 
-            containerObserver.observe(document.getElementById('kontenerSklepy'), {
+            containerObserver.observe(document.getElementById('storesContainer'), {
                 childList: true
             });
         }
 
         // ========================================
-        // INICJALIZACJA
+        // INICJALIZACJA / INITIALIZATION
         // ========================================
 
-        let formZmieniony = false;
+        let formChanged = false;
 
         document.addEventListener('DOMContentLoaded', () => {
-            setupSklepDragAndDrop();
-            setupProduktDragAndDrop();
+            setupStoreDragAndDrop();
+            setupProductDragAndDrop();
             restoreCollapsedStates();
-            updateCurrentShopIndicator();
+            updateCurrentStoreIndicator();
 
-            plywajacyPrzyciskElement = document.getElementById('plywajacyPrzycisk');
+            floatingButtonElement = document.getElementById('floatingButton');
             
-            if (plywajacyPrzyciskElement) {
+            if (floatingButtonElement) {
                 let scrollTimeout;
                 window.addEventListener('scroll', () => {
                     if (scrollTimeout) clearTimeout(scrollTimeout);
-                    scrollTimeout = setTimeout(pokazPrzycisk, 50);
+                    scrollTimeout = setTimeout(showFloatingButton, 50);
                 });
 
-                pokazPrzycisk();
+                showFloatingButton();
             }
 
-            const formEdycja = document.getElementById('formEdycja');
+            const editForm = document.getElementById('editForm');
             
-            if (formEdycja) {
-                formEdycja.addEventListener('change', () => {
-                    formZmieniony = true;
+            if (editForm) {
+                editForm.addEventListener('change', () => {
+                    formChanged = true;
                 });
 
-                formEdycja.addEventListener('input', () => {
-                    formZmieniony = true;
+                editForm.addEventListener('input', () => {
+                    formChanged = true;
                 });
 
-                formEdycja.addEventListener('submit', () => {
-                    formZmieniony = false;
+                editForm.addEventListener('submit', () => {
+                    formChanged = false;
                 });
             }
 
             window.addEventListener('beforeunload', (e) => {
-                if (formZmieniony) {
+                if (formChanged) {
                     e.preventDefault();
-                    e.returnValue = 'Masz niezapisane zmiany. Czy na pewno chcesz opuścić stronę?';
+                    e.returnValue = T.unsaved_changes || 'You have unsaved changes. Are you sure you want to leave?';
                 }
             });
 
-            document.querySelectorAll('.sklep-edytor').forEach(sklep => {
-                aktualizujLicznikProduktow(sklep);
+            document.querySelectorAll('.store-editor').forEach(store => {
+                updateProductCounter(store);
             });
         });
 
         // ========================================
-        // SKRÓTY KLAWISZOWE
+        // SKRÓTY KLAWISZOWE / KEYBOARD SHORTCUTS
         // ========================================
 
         document.addEventListener('keydown', (e) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 's') {
                 e.preventDefault();
-                submitFormZPlywajecgo();
+                submitFromFloating();
             }
             
             if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
@@ -2335,22 +2346,22 @@ if (!is_array($produkty_sklepy)) {
             if (e.key === 'Escape' && searchInput === document.activeElement) {
                 searchInput.value = '';
                 searchClear.classList.remove('visible');
-                filterSklepy('');
+                filterStores('');
             }
         });
 	</script>
 	
-	<!-- Pływający przycisk zapisz -->
-	<div id="plywajacyPrzycisk" class="plywajacy-zapisz" style="display: none;">
-	    <button type="button" onclick="submitFormZPlywajecgo()" class="btn-plywajacy-zapisz" title="Zapisz zmiany (Ctrl+S)">
-	        💾 Zapisz zmiany
+	<!-- Pływający przycisk zapisz / Floating save button -->
+	<div id="floatingButton" class="floating-save" style="display: none;">
+	    <button type="button" onclick="submitFromFloating()" class="btn-floating-save" title="<?php _e('editor.save_shortcut'); ?>">
+	        💾 <?php _e('editor.save_changes'); ?>
 	    </button>
 	</div>
 
     <script>
-        // Dodatkowy helper JS: upewnij się, że formularz zawsze zawiera _csrf (przydatne jeśli ktoś modyfikuje DOM)
+        // Upewnij się, że formularz zawsze zawiera _csrf / Ensure form always has _csrf
         document.addEventListener('DOMContentLoaded', () => {
-            const form = document.getElementById('formEdycja');
+            const form = document.getElementById('editForm');
             if (form && !form.querySelector('input[name="_csrf"]')) {
                 const inp = document.createElement('input');
                 inp.type = 'hidden';

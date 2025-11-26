@@ -1,15 +1,14 @@
 <?php
 // ============================================
-// SHOPICKER - Lista zakupów
-// Wersja: 2.4.4
+// SHOPICKER - Lista zakupów / Shopping List
+// Wersja / Version: 2.5.0
 // ============================================
 
-// === AUTO-WYKRYWANIE ŚCIEŻKI ===
+// === AUTO-WYKRYWANIE ŚCIEŻKI / AUTO-DETECT PATH ===
 $base_path = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
-// === KONIEC ===
+// === KONIEC / END ===
 
-// === BEZPIECZNE PARAMETRY SESJI ===
-// Ustaw cookie params zanim wywołasz session_start()
+// === BEZPIECZNE PARAMETRY SESJI / SECURE SESSION PARAMS ===
 $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
 session_set_cookie_params([
     'lifetime' => 0,
@@ -21,29 +20,33 @@ session_set_cookie_params([
 ]);
 session_start();
 
-// include security helpers (CSRF + escaping)
+// Dołącz helpery bezpieczeństwa i i18n / Include security helpers and i18n
 require_once __DIR__ . '/inc/security.php';
+require_once __DIR__ . '/inc/i18n.php';
 
-// === SPRAWDZENIE KONFIGURACJI ===
+// Zainicjalizuj system tłumaczeń / Initialize translation system
+initI18n();
+
+// === SPRAWDZENIE KONFIGURACJI / CONFIG CHECK ===
 $config_file = __DIR__ . '/config.php';
 $setup_file = __DIR__ . '/generate_hash.php';
 
 if (!file_exists($config_file)) {
-    // Brak konfiguracji
+    // Brak konfiguracji / No config
     if (file_exists($setup_file)) {
-        // Przekieruj na setup
+        // Przekieruj na setup / Redirect to setup
         header('Location: ' . $base_path . '/generate_hash.php');
         exit;
     } else {
-        // Brak pliku setup - pokaż komunikat błędu
+        // Brak pliku setup - pokaż komunikat błędu / No setup file - show error
         http_response_code(500);
         die('
         <!DOCTYPE html>
-        <html lang="pl">
+        <html lang="' . h(getCurrentLang()) . '">
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Shopicker - Błąd konfiguracji</title>
+            <title>' . h(__('config.error_title')) . '</title>
             <style>
                 * {
                     box-sizing: border-box;
@@ -122,28 +125,28 @@ if (!file_exists($config_file)) {
         </head>
         <body>
             <div class="error-box">
-                <h1>⚠️ Błąd konfiguracji</h1>
-                <h2>Brak wymaganych plików</h2>
+                <h1>' . h(__('config.error_heading')) . '</h1>
+                <h2>' . h(__('config.error_subheading')) . '</h2>
                 
                 <div class="code-box">
-                    <strong>Brakujące pliki:</strong><br>
-                    • config.php (konfiguracja)<br>
-                    • generate_hash.php (instalator)
+                    <strong>' . h(__('config.missing_files')) . '</strong><br>
+                    • ' . h(__('config.file_config')) . '<br>
+                    • ' . h(__('config.file_setup')) . '
                 </div>
                 
                 <div class="steps">
-                    <strong>🔧 Jak to naprawić:</strong>
+                    <strong>' . h(__('config.how_to_fix')) . '</strong>
                     <ol>
-                        <li>Wgraj plik <strong>generate_hash.php</strong> do katalogu aplikacji</li>
-                        <li>Odśwież tę stronę</li>
-                        <li>Zostaniesz przekierowany na formularz konfiguracji</li>
-                        <li>Ustaw PIN i gotowe!</li>
+                        <li>' . __('config.step_1') . '</li>
+                        <li>' . h(__('config.step_2')) . '</li>
+                        <li>' . h(__('config.step_3')) . '</li>
+                        <li>' . h(__('config.step_4')) . '</li>
                     </ol>
                 </div>
                 
                 <p style="margin-top: 20px; text-align: center; font-size: 0.9em; color: #999;">
-                    Jeśli problem się powtarza, skontaktuj się z administratorem lub sprawdź 
-                    <a href="https://github.com/Racho4All/shopicker" target="_blank">dokumentację</a>
+                    ' . h(__('config.contact_admin')) . ' 
+                    <a href="https://github.com/Racho4All/shopicker" target="_blank">' . h(__('config.documentation')) . '</a>
                 </p>
             </div>
         </body>
@@ -151,12 +154,12 @@ if (!file_exists($config_file)) {
         ');
     }
 }
-// === KONIEC ===
+// === KONIEC / END ===
 
 // === AUTENTYKACJA & CSRF & RATE LIMITING ===
 $config = require $config_file;
 
-// Basic PIN brute-force protection (session based)
+// Podstawowa ochrona przed brute-force / Basic brute-force protection
 if (!isset($_SESSION['pin_failed'])) {
     $_SESSION['pin_failed'] = 0;
 }
@@ -165,35 +168,32 @@ if (!isset($_SESSION['pin_last_failed'])) {
 }
 
 $pin_blocked = false;
-$pin_block_seconds = 300; // blokada po >=5 nieudanych na 5 minut
+$pin_block_seconds = 300; // blokada po >=5 nieudanych na 5 minut / block after >=5 fails for 5 min
 if ($_SESSION['pin_failed'] >= 5 && (time() - $_SESSION['pin_last_failed']) < $pin_block_seconds) {
     $pin_blocked = true;
 }
 
-// Helper to validate CSRF token is provided by inc/security.php (validate_csrf, csrf_token, etc.)
-
-// Handle login POST
+// Obsługa POST logowania / Handle login POST
 if (isset($_POST['pin'])) {
-    // Check CSRF
+    // Sprawdź CSRF / Check CSRF
     if (!validate_csrf()) {
         http_response_code(400);
         $error = 'csrf';
     } elseif ($pin_blocked) {
         $error = 'blocked';
     } else {
-        // Validate pin - backend validation only
+        // Walidacja PIN / Validate PIN
         $pin_input = (string)$_POST['pin'];
         if (password_verify($pin_input, $config['pin_hash'])) {
-            // Successful login
+            // Udane logowanie / Successful login
             session_regenerate_id(true);
             $_SESSION['auth'] = true;
-            // Reset failed attempts
             $_SESSION['pin_failed'] = 0;
             $_SESSION['pin_last_failed'] = 0;
             header('Location: ' . $base_path . '/');
             exit;
         } else {
-            // Failed attempt
+            // Nieudana próba / Failed attempt
             $_SESSION['pin_failed']++;
             $_SESSION['pin_last_failed'] = time();
             $error = true;
@@ -201,15 +201,12 @@ if (isset($_POST['pin'])) {
     }
 }
 
-// Wylogowanie (opcjonalne)
+// Wylogowanie / Logout
 if (isset($_GET['logout'])) {
-    // usuń dane sesji
+    $saved_lang = $_SESSION['lang'] ?? null;
     $_SESSION = [];
     if (ini_get("session.use_cookies")) {
         $params = session_get_cookie_params();
-
-        // Use setcookie with options array (PHP >= 7.3) to ensure SameSite is also cleared.
-        // Fallback to legacy signature for older PHP versions.
         if (PHP_VERSION_ID >= 70300) {
             setcookie(session_name(), '', [
                 'expires' => time() - 42000,
@@ -217,18 +214,23 @@ if (isset($_GET['logout'])) {
                 'domain' => $params['domain'] ?? '',
                 'secure' => $params['secure'] ?? false,
                 'httponly' => $params['httponly'] ?? true,
-                // Explicitly include samesite so the cookie is removed regardless of its previous attribute
                 'samesite' => 'Lax'
             ]);
         } else {
-            // Older PHP: same as before (will not explicitly clear SameSite attribute)
-        setcookie(session_name(), '', time() - 42000,
-            $params["path"], $params["domain"],
-            $params["secure"], $params["httponly"]
-        );
+            setcookie(session_name(), '', time() - 42000,
+                $params["path"], $params["domain"],
+                $params["secure"], $params["httponly"]
+            );
+        }
     }
-   }
     session_destroy();
+    
+    // Zachowaj wybór języka po wylogowaniu / Keep language after logout
+    session_start();
+    if ($saved_lang) {
+        $_SESSION['lang'] = $saved_lang;
+    }
+    
     header('Location: ' . $base_path . '/');
     exit;
 }
@@ -236,11 +238,11 @@ if (isset($_GET['logout'])) {
 if (empty($_SESSION['auth'])) {
     ?>
     <!DOCTYPE html>
-    <html lang="pl">
+    <html lang="<?php echo h(getCurrentLang()); ?>">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Shopicker - Logowanie</title>
+        <title><?php _e('login.title'); ?></title>
         <style>
             * {
                 box-sizing: border-box;
@@ -274,7 +276,7 @@ if (empty($_SESSION['auth'])) {
                 color: #666;
                 margin-bottom: 30px;
             }
-            input {
+            input[type="password"] {
                 font-size: 2em;
                 width: 100%;
                 max-width: 200px;
@@ -285,7 +287,7 @@ if (empty($_SESSION['auth'])) {
                 margin: 20px 0;
                 transition: border-color 0.3s ease;
             }
-            input:focus {
+            input[type="password"]:focus {
                 outline: none;
                 border-color: #667eea;
             }
@@ -315,16 +317,52 @@ if (empty($_SESSION['auth'])) {
                 25% { transform: translateX(-10px); }
                 75% { transform: translateX(10px); }
             }
+            .lang-switcher {
+                position: absolute;
+                top: 20px;
+                right: 20px;
+                display: flex;
+                gap: 8px;
+            }
+            .lang-btn {
+                padding: 8px 12px;
+                background: rgba(255,255,255,0.9);
+                border: none;
+                border-radius: 6px;
+                cursor: pointer;
+                font-size: 1.1em;
+                text-decoration: none;
+                transition: transform 0.2s ease;
+            }
+            .lang-btn:hover {
+                transform: scale(1.1);
+            }
+            .lang-btn.active {
+                background: #667eea;
+                color: white;
+            }
         </style>
     </head>
     <body>
+        <div class="lang-switcher">
+            <?php foreach (getAvailableLangs() as $lang): 
+                $lang_flag = I18n::getInstance()->getLangMeta($lang, 'flag') ?? $lang;
+            ?>
+                <a href="?lang=<?php echo h($lang); ?>" 
+                   class="lang-btn <?php echo $lang === getCurrentLang() ? 'active' : ''; ?>"
+                   title="<?php echo h(I18n::getInstance()->getLangMeta($lang, 'native_name') ?? $lang); ?>">
+                    <?php echo $lang_flag; ?>
+                </a>
+            <?php endforeach; ?>
+        </div>
+        
         <div class="login-box">
-            <h1>🛒 Shopicker</h1>
-            <p>Wpisz PIN aby kontynuować</p>
+            <h1><?php _e('login.heading'); ?></h1>
+            <p><?php _e('login.prompt'); ?></p>
             <form method="POST">
                 <input type="password" 
                        name="pin" 
-                       placeholder="••••" 
+                       placeholder="<?php _e('login.placeholder'); ?>" 
                        autofocus 
                        pattern="[0-9]*" 
                        inputmode="numeric"
@@ -332,13 +370,13 @@ if (empty($_SESSION['auth'])) {
                        autocomplete="off">
                 <input type="hidden" name="_csrf" value="<?php echo h(csrf_token()); ?>">
                 <br>
-                <button type="submit">Wejdź</button>
+                <button type="submit"><?php _e('login.submit'); ?></button>
                 <?php if (isset($error) && $error === 'csrf'): ?>
-                    <div class="error">❌ Nieprawidłowy token CSRF</div>
+                    <div class="error"><?php _e('login.error_csrf'); ?></div>
                 <?php elseif (isset($error) && $error === 'blocked'): ?>
-                    <div class="error">❌ Zbyt wiele nieudanych prób. Spróbuj ponownie później.</div>
+                    <div class="error"><?php _e('login.error_blocked'); ?></div>
                 <?php elseif (isset($error) && $error === true): ?>
-                    <div class="error">❌ Nieprawidłowy PIN</div>
+                    <div class="error"><?php _e('login.error_invalid_pin'); ?></div>
                 <?php endif; ?>
             </form>
         </div>
@@ -347,80 +385,90 @@ if (empty($_SESSION['auth'])) {
     <?php
     exit;
 }
-// === KONIEC AUTENTYKACJI ===
+// === KONIEC AUTENTYKACJI / END AUTH ===
 
 header('Cache-Control: no-cache, must-revalidate');
 header('Expires: Mon, 26 Jul 1997 05:00:00 GMT');
 
-// Używaj absolutnej ścieżki dla pliku danych
-$plik_danych = __DIR__ . '/statusy_sklepy.txt';
-$produkty_sklepy = require __DIR__ . '/produkty_sklepy.php';
+// Używaj absolutnej ścieżki dla pliku danych / Use absolute path for data file
+$data_file = __DIR__ . '/statusy_sklepy.txt';
+$products_by_store = require __DIR__ . '/produkty_sklepy.php';
 
-if (!is_array($produkty_sklepy)) {
-    die('Błąd: plik produkty_sklepy.php nie zwrócił poprawnej tablicy.');
+if (!is_array($products_by_store)) {
+    die(h(__('config.error_products_file')));
 }
 
 // ============================================
-// FUNKCJE POMOCNICZE
+// FUNKCJE POMOCNICZE / HELPER FUNCTIONS
 // ============================================
 
-function wczytajIlosci($plik) {
-    if (!file_exists($plik)) return [];
-    $json = @file_get_contents($plik);
-    $dane = json_decode($json, true);
-    return is_array($dane) ? $dane : [];
+/**
+ * Wczytuje ilości z pliku JSON / Load quantities from JSON file
+ */
+function loadQuantities($file) {
+    if (!file_exists($file)) return [];
+    $json = @file_get_contents($file);
+    $data = json_decode($json, true);
+    return is_array($data) ? $data : [];
 }
 
-function zapiszIlosci($plik, $ilosci) {
-    foreach ($ilosci as $sklep => $produkty) {
-        if (empty($produkty)) {
-            unset($ilosci[$sklep]);
+/**
+ * Zapisuje ilości do pliku JSON (atomic write) / Save quantities to JSON (atomic)
+ */
+function saveQuantities($file, $quantities) {
+    foreach ($quantities as $store => $products) {
+        if (empty($products)) {
+            unset($quantities[$store]);
         }
     }
     
-    $json = json_encode($ilosci, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    $json = json_encode($quantities, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
     if ($json === false) {
-        error_log("Błąd zapisu JSON: " . json_last_error_msg());
+        error_log("JSON write error: " . json_last_error_msg());
         return false;
     }
     
-    // Atomic write: zapisz do pliku tymczasowego, potem rename
-    $tmp = $plik . '.tmp';
+    $tmp = $file . '.tmp';
     $written = @file_put_contents($tmp, $json, LOCK_EX);
     if ($written === false) {
-        error_log('Nie udało się zapisać pliku tymczasowego: ' . $tmp);
+        error_log('Failed to write temp file: ' . $tmp);
         return false;
     }
-    if (!@rename($tmp, $plik)) {
-        // Jeśli rename się nie uda, spróbuj bezpiecznego zapisu
-        $result = @file_put_contents($plik, $json, LOCK_EX);
+    if (!@rename($tmp, $file)) {
+        $result = @file_put_contents($file, $json, LOCK_EX);
         if ($result === false) {
-            error_log('Nie udało się zapisać pliku docelowego: ' . $plik);
+            error_log('Failed to write target file: ' . $file);
             return false;
         }
     }
     return true;
 }
 
-function generuj_id_kotwicy($sklep, $produkt) {
-    return urlencode($sklep) . '_' . urlencode($produkt);
+/**
+ * Generuje ID kotwicy dla elementu listy / Generate anchor ID for list item
+ */
+function generateAnchorId($store, $product) {
+    return urlencode($store) . '_' . urlencode($product);
 }
 
-function przekierujZFiltrami() {
+/**
+ * Przekierowuje z zachowaniem filtrów sklepów / Redirect with store filters
+ */
+function redirectWithFilters() {
     global $base_path;
     
-    $parametry = [];
+    $params = [];
     
-    if (!empty($_POST['widoczne_sklepy'])) {
-        $parametry['sklepy'] = $_POST['widoczne_sklepy'];
+    if (!empty($_POST['visible_stores'])) {
+        $params['sklepy'] = $_POST['visible_stores'];
     }
     
-    if (!empty($_POST['widoczne_tryb']) && $_POST['widoczne_tryb'] === 'ukryte') {
-        $parametry['tryb'] = 'ukryte';
+    if (!empty($_POST['visible_mode']) && $_POST['visible_mode'] === 'hidden') {
+        $params['tryb'] = 'ukryte';
     }
     
-    $qs = $parametry ? '?' . http_build_query($parametry) : '';
-    header('Location: ' . $base_path . '/' . $qs);
+    $query_string = $params ? '?' . http_build_query($params) : '';
+    header('Location: ' . $base_path . '/' . $query_string);
     exit();
 }
 
@@ -428,30 +476,28 @@ function przekierujZFiltrami() {
 // OBSŁUGA USTAWIANIA ILOŚCI (POST)
 // ============================================
 
-if (isset($_POST['ustaw_ilosc']) && isset($_POST['produkt']) && isset($_POST['ilosc']) && isset($_POST['sklep'])) {
-    // CSRF check
+if (isset($_POST['set_quantity']) && isset($_POST['product']) && isset($_POST['quantity']) && isset($_POST['store'])) {
     if (!validate_csrf()) {
         http_response_code(400);
-        die('Nieprawidłowy token CSRF');
+        die(h(__('errors.csrf_invalid')));
     }
     
-    $ilosci_globalne = wczytajIlosci($plik_danych);
-    // Do logiki używaj surowych wartości (bez htmlspecialchars)
-    $produkt = (string)$_POST['produkt'];
-    $sklep = (string)$_POST['sklep'];
+    $global_quantities = loadQuantities($data_file);
+    $product = (string)$_POST['product'];
+    $store = (string)$_POST['store'];
     
-    if (trim((string)$_POST['ilosc']) === '') {
-        $ilosc_input = 1;
-    } elseif (is_numeric($_POST['ilosc']) && (int)$_POST['ilosc'] > 0) {
-        $ilosc_input = (int)$_POST['ilosc'];
+    if (trim((string)$_POST['quantity']) === '') {
+        $quantity_input = 1;
+    } elseif (is_numeric($_POST['quantity']) && (int)$_POST['quantity'] > 0) {
+        $quantity_input = (int)$_POST['quantity'];
     } else {
-        $ilosc_input = '';
+        $quantity_input = '';
     }
     
     $product_exists = false;
-    if (isset($produkty_sklepy[$sklep])) {
-        foreach ($produkty_sklepy[$sklep] as $item) {
-            if ($item['name'] === $produkt) {
+    if (isset($products_by_store[$store])) {
+        foreach ($products_by_store[$store] as $item) {
+            if ($item['name'] === $product) {
                 $product_exists = true;
                 break;
             }
@@ -459,41 +505,40 @@ if (isset($_POST['ustaw_ilosc']) && isset($_POST['produkt']) && isset($_POST['il
     }
     
     if ($product_exists) {
-        if (!isset($ilosci_globalne[$sklep])) {
-            $ilosci_globalne[$sklep] = [];
+        if (!isset($global_quantities[$store])) {
+            $global_quantities[$store] = [];
         }
         
-        if ($ilosc_input === '' || (int)$ilosc_input <= 0) {
-            unset($ilosci_globalne[$sklep][$produkt]);
+        if ($quantity_input === '' || (int)$quantity_input <= 0) {
+            unset($global_quantities[$store][$product]);
         } else {
-            $ilosci_globalne[$sklep][$produkt] = (int)$ilosc_input;
+            $global_quantities[$store][$product] = (int)$quantity_input;
         }
         
-        zapiszIlosci($plik_danych, $ilosci_globalne);
+        saveQuantities($data_file, $global_quantities);
     }
     
-    przekierujZFiltrami();
+    redirectWithFilters();
 }
 
 // ============================================
 // OBSŁUGA "KUPIONE!" (POST)
 // ============================================
 
-if (isset($_POST['oznacz_jako_mam']) && isset($_POST['produkt']) && isset($_POST['sklep'])) {
-    // CSRF check
+if (isset($_POST['mark_as_bought']) && isset($_POST['product']) && isset($_POST['store'])) {
     if (!validate_csrf()) {
         http_response_code(400);
-        die('Nieprawidłowy token CSRF');
+        die(h(__('errors.csrf_invalid')));
     }
     
-    $ilosci_globalne = wczytajIlosci($plik_danych);
-    $produkt = (string)$_POST['produkt'];
-    $sklep = (string)$_POST['sklep'];
+    $global_quantities = loadQuantities($data_file);
+    $product = (string)$_POST['product'];
+    $store = (string)$_POST['store'];
     
     $product_exists = false;
-    if (isset($produkty_sklepy[$sklep])) {
-        foreach ($produkty_sklepy[$sklep] as $item) {
-            if ($item['name'] === $produkt) {
+    if (isset($products_by_store[$store])) {
+        foreach ($products_by_store[$store] as $item) {
+            if ($item['name'] === $product) {
                 $product_exists = true;
                 break;
             }
@@ -501,107 +546,111 @@ if (isset($_POST['oznacz_jako_mam']) && isset($_POST['produkt']) && isset($_POST
     }
     
     if ($product_exists) {
-        if (isset($ilosci_globalne[$sklep][$produkt])) {
-            unset($ilosci_globalne[$sklep][$produkt]);
+        if (isset($global_quantities[$store][$product])) {
+            unset($global_quantities[$store][$product]);
         }
         
-        if (!isset($ilosci_globalne[$sklep])) {
-            $ilosci_globalne[$sklep] = [];
+        if (!isset($global_quantities[$store])) {
+            $global_quantities[$store] = [];
         }
         
-        zapiszIlosci($plik_danych, $ilosci_globalne);
+        saveQuantities($data_file, $global_quantities);
     }
     
-    przekierujZFiltrami();
+    redirectWithFilters();
 }
 
 // ============================================
 // WCZYTANIE AKTUALNYCH ILOŚCI
 // ============================================
 
-$aktualne_ilosci = wczytajIlosci($plik_danych);
+$current_quantities = loadQuantities($data_file);
 
 // ============================================
 // FILTROWANIE SKLEPÓW Z GET
 // ============================================
 
-$filtr_sklepy = null; // null = pokaż wszystkie (brak parametru)
+$filter_stores = null;
 
 if (isset($_GET['sklepy'])) {
-    // Parametr istnieje
     if ($_GET['sklepy'] === '') {
-        $filtr_sklepy = []; // Pusta tablica = ukryj wszystkie
+        $filter_stores = [];
     } else {
-        $filtr_sklepy = explode(',', $_GET['sklepy']);
+        $filter_stores = explode(',', $_GET['sklepy']);
     }
 }
 
 // ============================================
-// STATYSTYKI (lekkie)
+// STATYSTYKI
 // ============================================
 
-// Najpierw oblicz listę sklepów z produktami (ignorując filtry URL)
-$sklepy_z_produktami = [];
-foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
-    foreach ($produkty_w_sklepie as $item) {
-        $produkt = $item['name'];
-        $ilosc_obecna = isset($aktualne_ilosci[$sklep_nazwa][$produkt]) 
-            ? $aktualne_ilosci[$sklep_nazwa][$produkt] 
+$stores_with_products = [];
+foreach ($products_by_store as $store_name => $store_products) {
+    foreach ($store_products as $item) {
+        $product = $item['name'];
+        $current_qty = isset($current_quantities[$store_name][$product]) 
+            ? $current_quantities[$store_name][$product] 
             : null;
         
-        if ($ilosc_obecna !== null && $ilosc_obecna > 0) {
-            $sklepy_z_produktami[] = $sklep_nazwa;
-            break; // Ten sklep ma już jakiś produkt, przejdź do następnego
+        if ($current_qty !== null && $current_qty > 0) {
+            $stores_with_products[] = $store_name;
+            break;
         }
     }
 }
 
-// Potem zlicz total z uwzględnieniem filtrów
-$do_kupienia_total = 0;
-foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
-    if (!empty($filtr_sklepy) && !in_array($sklep_nazwa, $filtr_sklepy)) continue;
+$total_to_buy = 0;
+foreach ($products_by_store as $store_name => $store_products) {
+    if (!empty($filter_stores) && !in_array($store_name, $filter_stores)) continue;
     
-    foreach ($produkty_w_sklepie as $item) {
-        $produkt = $item['name'];
-        $ilosc_obecna = isset($aktualne_ilosci[$sklep_nazwa][$produkt]) 
-            ? $aktualne_ilosci[$sklep_nazwa][$produkt] 
+    foreach ($store_products as $item) {
+        $product = $item['name'];
+        $current_qty = isset($current_quantities[$store_name][$product]) 
+            ? $current_quantities[$store_name][$product] 
             : null;
         
-        if ($ilosc_obecna !== null && $ilosc_obecna > 0) {
-            $do_kupienia_total++;
+        if ($current_qty !== null && $current_qty > 0) {
+            $total_to_buy++;
         }
     }
+}
+
+// Przygotuj tłumaczenia dla JavaScript / Prepare translations for JavaScript
+$js_translations = I18n::getInstance()->get('js');
+if (!is_array($js_translations)) {
+    // Fallback na puste tłumaczenia jeśli sekcja 'js' nie istnieje
+    $js_translations = [
+        'show_all' => 'Show all',
+        'cart_only' => 'Cart only',
+        'select_all' => 'select all',
+        'deselect_all' => 'deselect all',
+        'have' => '✓ Have',
+    ];
 }
 
 ?>
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="<?php echo h(getCurrentLang()); ?>">
 <head>
     <meta charset="UTF-8">
-    <title>Shopicker - lista zakupów</title>
+    <title><?php _e('app.title'); ?></title>
 
-	<!-- Favicons -->
-	<link rel="icon" type="image/png" href="<?php echo h($base_path); ?>/assets/favicon-96x96.png" sizes="96x96" />
-	<link rel="icon" type="image/svg+xml" href="<?php echo h($base_path); ?>/assets/favicon.svg" />
-	<link rel="shortcut icon" href="<?php echo h($base_path); ?>/assets/favicon.ico" />
-	<link rel="apple-touch-icon" sizes="180x180" href="<?php echo h($base_path); ?>/assets/apple-touch-icon.png" />
-	<meta name="apple-mobile-web-app-title" content="Shopicker" />
-	<link rel="manifest" href="<?php echo h($base_path); ?>/assets/site.webmanifest" />
-	
-    <!-- FONT LOADING - dodaj tutaj -->
+    <!-- Favicons -->
+    <link rel="icon" type="image/png" href="<?php echo h($base_path); ?>/assets/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="<?php echo h($base_path); ?>/assets/favicon.svg" />
+    <link rel="shortcut icon" href="<?php echo h($base_path); ?>/assets/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="<?php echo h($base_path); ?>/assets/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="Shopicker" />
+    <link rel="manifest" href="<?php echo h($base_path); ?>/assets/site.webmanifest" />
+    
+    <!-- Ładowanie fontów / Font loading -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600&display=swap" rel="stylesheet">	
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600&display=swap" rel="stylesheet">    
     
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     
     <style>
-        /* ========================================
-           IMPORT FONTÓW
-           ======================================== */
-        
-        /*@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');*/
-        
         /* ========================================
            RESET I PODSTAWY
            ======================================== */
@@ -620,29 +669,28 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
             padding-bottom: 80px;
         }
         
-		.montserrat-logo {
-			font-family: "Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-			font-optical-sizing: auto;
-			font-weight: 600;
-			font-style: normal;
-			margin: 0;
-			font-size: 1.8em;
-		}
+        .logo-text {
+            font-family: "Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+            font-optical-sizing: auto;
+            font-weight: 600;
+            font-style: normal;
+            margin: 0;
+            font-size: 1.8em;
+        }
         
         /* ========================================
-           STYLE ZE STAREGO CSS (niekonfliktowe)
+           STYLE PRZYCISKÓW
            ======================================== */
         
-        /* Przycisk edycji */
-        .przycisk-edytuj { 
+        .btn-edit { 
             background-color: #2196F3 !important; 
         }
         
-        .przycisk-edytuj:hover { 
+        .btn-edit:hover { 
             background-color: #1976D2 !important; 
         }
         
-        .naglowek-kontener { 
+        .header-container { 
             display: flex; 
             justify-content: space-between; 
             align-items: center; 
@@ -650,7 +698,7 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
             gap: 10px; 
         }
         
-        .przycisk-naglowek { 
+        .btn-header { 
             padding: 8px 12px; 
             color: white; 
             border: none; 
@@ -660,72 +708,72 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
             display: inline-block; 
         }
         
-        .przycisk-odswiez { 
+        .btn-refresh { 
             background-color: #007bff; 
         }
         
-        .przycisk-ukryj { 
+        .btn-hide { 
             background-color: #5d6a7a; 
         }
         
-        .przycisk-odswiez:hover { 
+        .btn-refresh:hover { 
             background-color: #0056b3; 
         }
         
-        .przycisk-ukryj:hover { 
+        .btn-hide:hover { 
             background-color: #434d58; 
         }
         
-		/* ========================================
-		   STICKY TOP BAR - minimalistyczny
-		   ======================================== */
+        /* ========================================
+           STICKY TOP BAR
+           ======================================== */
 
-		.top-bar {
-			position: sticky;
-			top: 0;
-			z-index: 100;
-			background: white;
-			box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-			padding: 10px 15px;
-			display: flex;
-			flex-wrap: wrap;
-			justify-content: space-between;
-			align-items: center;
-			gap: 10px;
-		}
+        .top-bar {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 10px 15px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
 
-		.counter-badge {
-			background: #FF9800;
-			color: white;
-			padding: 8px 16px;
-			border-radius: 20px;
-			font-weight: 700;
-			font-size: 1.1em;
-			white-space: nowrap;
-			order: 1;
-			text-decoration: none;
-			transition: transform 0.2s ease;
-		}
+        .counter-badge {
+            background: #FF9800;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 1.1em;
+            white-space: nowrap;
+            order: 1;
+            text-decoration: none;
+            transition: transform 0.2s ease;
+        }
 
-		.counter-badge:active {
-			transform: scale(0.95);
-		}
+        .counter-badge:active {
+            transform: scale(0.95);
+        }
 
-		.counter-badge.zero {
-			background: #4CAF50;
-		}
+        .counter-badge.zero {
+            background: #4CAF50;
+        }
 
-		.montserrat-logo {
-			margin: 0;
-			font-size: 1.8em;
-			order: 2;
-		}
+        .logo-text {
+            margin: 0;
+            font-size: 1.8em;
+            order: 2;
+        }
 
-		.top-actions {
-			display: flex;
-			gap: 8px;
-			order: 3;
-		}
+        .top-actions {
+            display: flex;
+            gap: 8px;
+            order: 3;
+        }
         
         .btn-top {
             padding: 8px 12px;
@@ -756,7 +804,7 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
         .btn-refresh:active {
             background: #F57C00;
             transform: scale(0.95);
-        }		
+        }        
         
         .btn-edit {
             background: #9C27B0;
@@ -768,24 +816,88 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
             transform: scale(0.95);
         }
         
+        .btn-lang {
+            background: #607D8B;
+            color: white;
+            font-size: 1.1em;
+            padding: 6px 10px;
+            position: relative;
+        }
+        
+        .btn-lang:active {
+            background: #455A64;
+            transform: scale(0.95);
+        }
+        
         /* ========================================
-           WYBÓR SKLEPÓW - kompaktowy
+           PRZEŁĄCZNIK JĘZYKÓW / LANGUAGE SWITCHER
            ======================================== */
         
-        .sklepy-picker {
+        .lang-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .lang-dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: 100%;
+            background: white;
+            min-width: 140px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            border-radius: 8px;
+            z-index: 200;
+            overflow: hidden;
+            margin-top: 4px;
+        }
+        
+        .lang-dropdown-content.show {
+            display: block;
+        }
+        
+        .lang-dropdown-content a {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            color: #333;
+            text-decoration: none;
+            font-size: 0.95em;
+            transition: background 0.2s ease;
+        }
+        
+        .lang-dropdown-content a:hover {
+            background: #f5f5f5;
+        }
+        
+        .lang-dropdown-content a.active {
+            background: #E3F2FD;
+            font-weight: 600;
+        }
+        
+        .lang-dropdown-content a .lang-flag {
+            font-size: 1.2em;
+        }
+        
+        /* ========================================
+           WYBÓR SKLEPÓW
+           ======================================== */
+        
+        .stores-picker {
             background: #f5f5f5;
             padding: 12px 15px;
             margin-bottom: 10px;
         }
         
-        .sklepy-grid {
+        .stores-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
             gap: 8px;
             margin-top: 8px;
         }
         
-        .sklep-chip {
+        .store-chip {
             display: flex;
             align-items: center;
             padding: 8px 10px;
@@ -797,19 +909,19 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
             font-size: 0.95em;
         }
         
-        .sklep-chip input {
+        .store-chip input {
             margin: 0 6px 0 0;
             width: 18px;
             height: 18px;
         }
         
-        .sklep-chip:has(input:checked) {
+        .store-chip:has(input:checked) {
             background: #E3F2FD;
             border-color: #2196F3;
             font-weight: 600;
         }
         
-        .sklepy-label {
+        .stores-label {
             font-weight: 600;
             font-size: 0.9em;
             color: #666;
@@ -819,7 +931,7 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
             align-items: center;
         }
         
-        .btn-all-shops {
+        .btn-all-stores {
             background: none;
             border: none;
             color: #2196F3;
@@ -829,18 +941,18 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
         }
         
         /* ========================================
-           LISTA PRODUKTÓW - maksymalnie czytelna
+           LISTA PRODUKTÓW
            ======================================== */
         
-        .sklep-sekcja {
+        .store-section {
             margin-bottom: 20px;
         }
         
-        .sklep-sekcja.ukryty {
+        .store-section.hidden {
             display: none;
         }
         
-        .sklep-nazwa {
+        .store-name {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             padding: 12px 15px;
@@ -857,20 +969,20 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
             box-shadow: 0 2px 6px rgba(0,0,0,0.15);
         }
         
-        .sklep-counter {
+        .store-counter {
             background: rgba(255,255,255,0.3);
             padding: 4px 10px;
             border-radius: 12px;
             font-size: 0.85em;
         }
         
-        .lista {
+        .product-list {
             list-style: none;
             padding: 0;
             margin: 0;
         }
         
-        .lista li {
+        .product-list li {
             background: white;
             margin-bottom: 8px;
             padding: 14px 15px;
@@ -883,27 +995,27 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
         
-        .lista li.status-need {
+        .product-list li.status-need {
             border-left: 5px solid #FF9800;
             background: #FFF8E1;
         }
         
-        .lista li.status-have {
+        .product-list li.status-have {
             border-left: 5px solid #4CAF50;
             opacity: 0.6;
         }
         
-        .lista li.ukryty {
+        .product-list li.hidden {
             display: none;
         }
         
-        .nazwa-produktu {
+        .product-name {
             flex: 1;
             font-size: 1.1em;
             font-weight: 600;
         }
         
-        .ilosc-tekst {
+        .quantity-text {
             display: block;
             font-size: 0.9em;
             font-weight: 500;
@@ -911,18 +1023,18 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
             margin-top: 4px;
         }
         
-        .status-have .ilosc-tekst {
+        .status-have .quantity-text {
             color: #4CAF50;
         }
         
-        .formularz-ilosc {
+        .quantity-form {
             display: flex;
             gap: 6px;
             align-items: center;
         }
         
         /* Przyciski w liście */
-        .przycisk {
+        .btn {
             padding: 10px 16px;
             border: none;
             border-radius: 6px;
@@ -933,28 +1045,28 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
             white-space: nowrap;
         }
         
-        .przycisk-mam {
+        .btn-bought {
             background: #4CAF50;
             color: white;
             min-width: 100px;
         }
         
-        .przycisk-mam:active {
+        .btn-bought:active {
             background: #45a049;
             transform: scale(0.95);
         }
         
-        .przycisk-zmien {
+        .btn-change {
             background: #2196F3;
             color: white;
         }
         
-        .przycisk-zmien:active {
+        .btn-change:active {
             background: #1976D2;
             transform: scale(0.95);
         }
         
-        .wejscie-ilosc {
+        .quantity-input {
             width: 60px;
             padding: 8px;
             border: 2px solid #ddd;
@@ -964,170 +1076,160 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
             font-weight: 600;
         }
         
-        .jednostka-miary {
+        .unit-label {
             font-size: 0.9em;
             color: #666;
             font-weight: 500;
         }
         
-		/* ========================================
-		   RESPONSYWNOŚĆ MOBILE
-		   ======================================== */
+        /* ========================================
+           RESPONSYWNOŚĆ MOBILE
+           ======================================== */
 
-		@media (max-width: 600px) {
-			.top-bar {
-				padding: 8px 12px;
-				gap: 8px;
-			}
-			
-			/* H1 w pierwszej linii - całą szerokość */
-			.montserrat-logo {
-				order: 0;
-				width: 100%;
-				text-align: center;
-				font-size: 1.8em;
-				margin-bottom: 4px;
-			}
-			
-			/* Counter i przyciski w drugiej linii */
-			.counter-badge {
-				order: 1;
-				font-size: 1em;
-				padding: 6px 12px;
-			}
-			
-			.top-actions {
-				order: 2;
-			}
-			
-			.btn-top {
-				padding: 8px 10px;
-				font-size: 0.9em;
-			}
-			
-			.sklepy-grid {
-				grid-template-columns: 1fr 1fr;
-			}
-			
-			.sklep-chip {
-				font-size: 0.9em;
-				padding: 6px 8px;
-			}
-			
-			.sklep-nazwa {
-				font-size: 1.1em;
-				padding: 10px 12px;
-				top: 44px;
-			}
-			
-			/* NOWY UKŁAD DLA PRODUKTÓW */
-			.lista li {
-				display: flex;
-				flex-direction: column;
-				align-items: stretch;
-				padding: 12px;
-				gap: 10px;
-				min-height: auto;
-				max-height: none;
-				height: auto;
-			}
-			
-			/* Nazwa produktu w pierwszej linii - SAMA, może się zawijać */
-			.nazwa-produktu {
-				font-size: 1.05em;
-				width: 100%;
-				display: block;
-				word-wrap: break-word;
-				overflow-wrap: break-word;
-				line-height: 1.4;
-			}
-			
-			/* Ukryj .ilosc-tekst w górnej linii */
-			.nazwa-produktu .ilosc-tekst {
-				display: none;
-			}
-			
-			/* Formularz w drugiej linii - ZAWSZE widoczny */
-			.formularz-ilosc {
-				width: 100%;
-				display: flex;
-				justify-content: space-between;
-				align-items: center;
-				gap: 8px;
-				flex-wrap: nowrap;
-				flex-shrink: 0;
-			}
-			
-			/* Tekst ilości/status na początku linii */
-			.formularz-ilosc::before {
-				font-size: 0.9em;
-				font-weight: 500;
-				flex-shrink: 0;
-			}
-			
-			.status-need .formularz-ilosc::before {
-				content: attr(data-ilosc);
-				color: #FF9800;
-			}
-			
-			.status-have .formularz-ilosc::before {
-				content: "✓ Mam";
-				color: #4CAF50;
-			}
-			
-			.formularz-ilosc form {
-				display: flex;
-				align-items: center;
-				gap: 6px;
-				flex-shrink: 0;
-			}
-			
-			/* Przycisk "Kupione" */
-			.status-need .przycisk-mam {
-				padding: 10px 16px;
-				white-space: nowrap;
-			}
-			
-			/* Input i przycisk "Kup" */
-			.wejscie-ilosc {
-				width: 60px;
-				font-size: 1em;
-				flex-shrink: 0;
-			}
-			
-			.jednostka-miary {
-				min-width: auto;
-				flex-shrink: 0;
-			}
-			
-			.przycisk-zmien {
-				padding: 10px 14px;
-				white-space: nowrap;
-				flex-shrink: 0;
-			}
-			
-			/* Style ze starego CSS dla mobile */
-			label { 
-				white-space: nowrap; 
-				font-size: larger; 
-			}
-			
-			.status-need { 
-				font-size: larger; 
-			}
-		}
+        @media (max-width: 600px) {
+            .top-bar {
+                padding: 8px 12px;
+                gap: 8px;
+            }
+            
+            .logo-text {
+                order: 0;
+                width: 100%;
+                text-align: center;
+                font-size: 1.8em;
+                margin-bottom: 4px;
+            }
+            
+            .counter-badge {
+                order: 1;
+                font-size: 1em;
+                padding: 6px 12px;
+            }
+            
+            .top-actions {
+                order: 2;
+            }
+            
+            .btn-top {
+                padding: 8px 10px;
+                font-size: 0.9em;
+            }
+            
+            .stores-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+            
+            .store-chip {
+                font-size: 0.9em;
+                padding: 6px 8px;
+            }
+            
+            .store-name {
+                font-size: 1.1em;
+                padding: 10px 12px;
+                top: 44px;
+            }
+            
+            .product-list li {
+                display: flex;
+                flex-direction: column;
+                align-items: stretch;
+                padding: 12px;
+                gap: 10px;
+                min-height: auto;
+                max-height: none;
+                height: auto;
+            }
+            
+            .product-name {
+                font-size: 1.05em;
+                width: 100%;
+                display: block;
+                word-wrap: break-word;
+                overflow-wrap: break-word;
+                line-height: 1.4;
+            }
+            
+            .product-name .quantity-text {
+                display: none;
+            }
+            
+            .quantity-form {
+                width: 100%;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 8px;
+                flex-wrap: nowrap;
+                flex-shrink: 0;
+            }
+            
+            .quantity-form::before {
+                font-size: 0.9em;
+                font-weight: 500;
+                flex-shrink: 0;
+            }
+            
+            .status-need .quantity-form::before {
+                content: attr(data-quantity);
+                color: #FF9800;
+            }
+            
+            .status-have .quantity-form::before {
+                content: attr(data-have-text);
+                color: #4CAF50;
+            }
+            
+            .quantity-form form {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                flex-shrink: 0;
+            }
+            
+            .status-need .btn-bought {
+                padding: 10px 16px;
+                white-space: nowrap;
+            }
+            
+            .quantity-input {
+                width: 60px;
+                font-size: 1em;
+                flex-shrink: 0;
+            }
+            
+            .unit-label {
+                min-width: auto;
+                flex-shrink: 0;
+            }
+            
+            .btn-change {
+                padding: 10px 14px;
+                white-space: nowrap;
+                flex-shrink: 0;
+            }
+            
+            label { 
+                white-space: nowrap; 
+                font-size: larger; 
+            }
+            
+            .status-need { 
+                font-size: larger; 
+            }
+        }
         
         /* ========================================
            ANIMACJE
            ======================================== */
         
-        @keyframes kupiono {
+        @keyframes bought-animation {
             0%, 100% { transform: scale(1); }
             50% { transform: scale(1.02); }
         }
         
-        .kupiono-anim {
-            animation: kupiono 0.3s ease;
+        .bought-anim {
+            animation: bought-animation 0.3s ease;
         }
 
     </style>
@@ -1139,55 +1241,72 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
     <!-- ============================================ -->
     
     <div class="top-bar">
-		<a href="#" 
-		   onclick="resetSklepy(event)" 
-		   title="Sprawdź" 
-		   class="counter-badge <?php echo $do_kupienia_total === 0 ? 'zero' : ''; ?>">
-			<?php if ($do_kupienia_total > 0): ?>
-				🛒 <?php echo $do_kupienia_total; ?>
-			<?php else: ?>
-				✓ Gotowe!
-			<?php endif; ?>
-		</a>		
-		<h1 class="montserrat-logo">
-			<img src="<?php echo h($base_path); ?>/assets/favicon.svg" 
-				 alt="Logo" 
-				 style="height: 1.5em; vertical-align: middle; margin-right: -0.2em">
-			Shopicker
-		</h1>
-		<div class="top-actions">
-			<button class="btn-top btn-toggle" onclick="toggleUkryj()" id="btnToggle">
-				👁️
-			</button>
-			<button class="btn-top btn-refresh" onclick="odswiezListe()" title="Odśwież listę">
-				🔄
-			</button>
-			<a href="<?php echo h($base_path); ?>/edytuj.php" class="btn-top btn-edit" title="Edytuj listę produktów">
-				✏️
-			</a>
-			<a href="<?php echo h($base_path); ?>/?logout" class="btn-top btn-logout" style="background: #f44336;" title="Wyloguj">
-				🚪
-			</a>
-		</div>
+        <a href="#" 
+           onclick="resetStores(event)" 
+           title="<?php _e('ui.refresh'); ?>" 
+           class="counter-badge <?php echo $total_to_buy === 0 ? 'zero' : ''; ?>">
+            <?php if ($total_to_buy > 0): ?>
+                <?php echo h(__('counter.cart_icon')); ?> <?php echo $total_to_buy; ?>
+            <?php else: ?>
+                <?php _e('counter.done'); ?>
+            <?php endif; ?>
+        </a>        
+        <h1 class="logo-text">
+            <img src="<?php echo h($base_path); ?>/assets/favicon.svg" 
+                 alt="Logo" 
+                 style="height: 1.5em; vertical-align: middle; margin-right: -0.2em">
+            <?php echo h(__('app.name')); ?>
+        </h1>
+        <div class="top-actions">
+            <button class="btn-top btn-toggle" onclick="toggleHide()" id="btnToggle">
+                👁️
+            </button>
+            <button class="btn-top btn-refresh" onclick="refreshList()" title="<?php _e('ui.refresh'); ?>">
+                🔄
+            </button>
+            <a href="<?php echo h($base_path); ?>/edit.php" class="btn-top btn-edit" title="<?php _e('ui.edit'); ?>">
+                ✏️
+            </a>
+            <div class="lang-dropdown">
+                <button class="btn-top btn-lang" onclick="toggleLangDropdown(event)" title="<?php _e('ui.language'); ?>">
+                    <?php echo I18n::getInstance()->getLangMeta(getCurrentLang(), 'flag') ?? '🌐'; ?>
+                </button>
+                <div class="lang-dropdown-content" id="langDropdown">
+                    <?php foreach (getAvailableLangs() as $lang): 
+                        $lang_flag = I18n::getInstance()->getLangMeta($lang, 'flag') ?? $lang;
+                        $lang_name = I18n::getInstance()->getLangMeta($lang, 'native_name') ?? $lang;
+                    ?>
+                        <a href="?lang=<?php echo h($lang); ?>" 
+                           class="<?php echo $lang === getCurrentLang() ? 'active' : ''; ?>">
+                            <span class="lang-flag"><?php echo $lang_flag; ?></span>
+                            <span><?php echo h($lang_name); ?></span>
+                        </a>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+            <a href="<?php echo h($base_path); ?>/?logout" class="btn-top btn-logout" style="background: #f44336;" title="<?php _e('ui.logout'); ?>">
+                🚪
+            </a>
+        </div>
     </div>
 
     <!-- ============================================ -->
     <!-- WYBÓR SKLEPÓW -->
     <!-- ============================================ -->
     
-    <div class="sklepy-picker">
-        <div class="sklepy-label">
-            🏪 Sklepy
-            <button class="btn-all-shops" onclick="toggleAllShops()">wszystkie</button>
+    <div class="stores-picker">
+        <div class="stores-label">
+            <?php _e('ui.stores'); ?>
+            <button class="btn-all-stores" onclick="toggleAllStores()"><?php _e('ui.all_stores'); ?></button>
         </div>
-        <div class="sklepy-grid">
-            <?php foreach (array_keys($produkty_sklepy) as $sklep_nazwa): ?>
-                <label class="sklep-chip" for="sklep_<?php echo h(urlencode($sklep_nazwa)); ?>">
+        <div class="stores-grid">
+            <?php foreach (array_keys($products_by_store) as $store_name): ?>
+                <label class="store-chip" for="store_<?php echo h(urlencode($store_name)); ?>">
                     <input type="checkbox" 
-                           id="sklep_<?php echo h(urlencode($sklep_nazwa)); ?>"
-                           class="checkboxSklep" 
-                           value="<?php echo h($sklep_nazwa); ?>">
-                    <span><?php echo h($sklep_nazwa); ?></span>
+                           id="store_<?php echo h(urlencode($store_name)); ?>"
+                           class="store-checkbox" 
+                           value="<?php echo h($store_name); ?>">
+                    <span><?php echo h($store_name); ?></span>
                 </label>
             <?php endforeach; ?>
         </div>
@@ -1197,89 +1316,87 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
     <!-- LISTY PRODUKTÓW -->
     <!-- ============================================ -->
 
-	<?php foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie): ?>
-		<?php 
-		if ($filtr_sklepy !== null) {
-			// Parametr sklepy istnieje w URL
-			if (empty($filtr_sklepy)) {
-				// Pusta lista = ukryj wszystko
-				continue;
-			} elseif (!in_array($sklep_nazwa, $filtr_sklepy)) {
-				// Sklep nie jest na liście wybranych
-				continue;
-			}
-		}
-		// $filtr_sklepy === null -> pokaż wszystko (brak parametru)
-		?>
-        
-        <?php
-        $do_kupienia_sklep = 0;
-        foreach ($produkty_w_sklepie as $item) {
-            $produkt = $item['name'];
-            $ilosc_obecna = isset($aktualne_ilosci[$sklep_nazwa][$produkt]) 
-                ? $aktualne_ilosci[$sklep_nazwa][$produkt] 
-                : null;
-            if ($ilosc_obecna !== null && $ilosc_obecna > 0) {
-                $do_kupienia_sklep++;
+    <?php foreach ($products_by_store as $store_name => $store_products): ?>
+        <?php 
+        if ($filter_stores !== null) {
+            if (empty($filter_stores)) {
+                continue;
+            } elseif (!in_array($store_name, $filter_stores)) {
+                continue;
             }
         }
         ?>
         
-        <div class="sklep-sekcja" data-sklep="<?php echo h($sklep_nazwa); ?>">
-            <h2 class="sklep-nazwa">
-                <span><?php echo h($sklep_nazwa); ?></span>
-                <?php if ($do_kupienia_sklep > 0): ?>
-                    <span class="sklep-counter"><?php echo $do_kupienia_sklep; ?></span>
+        <?php
+        $store_to_buy = 0;
+        foreach ($store_products as $item) {
+            $product = $item['name'];
+            $current_qty = isset($current_quantities[$store_name][$product]) 
+                ? $current_quantities[$store_name][$product] 
+                : null;
+            if ($current_qty !== null && $current_qty > 0) {
+                $store_to_buy++;
+            }
+        }
+        ?>
+        
+        <div class="store-section" data-store="<?php echo h($store_name); ?>">
+            <h2 class="store-name">
+                <span><?php echo h($store_name); ?></span>
+                <?php if ($store_to_buy > 0): ?>
+                    <span class="store-counter"><?php echo $store_to_buy; ?></span>
                 <?php endif; ?>
             </h2>
-            <ul class="lista">
-                <?php foreach ($produkty_w_sklepie as $item): 
-                    $produkt = $item['name'];
-                    $jednostka = $item['unit'];
+            <ul class="product-list">
+                <?php foreach ($store_products as $item): 
+                    $product = $item['name'];
+                    $unit = $item['unit'];
                     
-                    $ilosc_obecna = isset($aktualne_ilosci[$sklep_nazwa][$produkt]) 
-                        ? $aktualne_ilosci[$sklep_nazwa][$produkt] 
+                    $current_qty = isset($current_quantities[$store_name][$product]) 
+                        ? $current_quantities[$store_name][$product] 
                         : null;
                     
-                    $czy_potrzebny = ($ilosc_obecna !== null && $ilosc_obecna > 0);
-                    $klasa_css = $czy_potrzebny ? 'status-need' : 'status-have';
-                    $ilosc_tekst = $czy_potrzebny 
-                        ? "$ilosc_obecna $jednostka" 
-                        : "✓ Mam";
-                    $wartosc_input = $czy_potrzebny ? $ilosc_obecna : '';
-                    $id_elementu = generuj_id_kotwicy($sklep_nazwa, $produkt);
+                    $is_needed = ($current_qty !== null && $current_qty > 0);
+                    $css_class = $is_needed ? 'status-need' : 'status-have';
+                    $quantity_text = $is_needed 
+                        ? "$current_qty $unit" 
+                        : __('product.have');
+                    $input_value = $is_needed ? $current_qty : '';
+                    $element_id = generateAnchorId($store_name, $product);
                 ?>
                 
-                <li id="<?php echo h($id_elementu); ?>" class="<?php echo $klasa_css; ?>">
-                    <span class="nazwa-produktu">
-                        <?php echo h($produkt); ?>
-                        <span class="ilosc-tekst"><?php echo h($ilosc_tekst); ?></span>
+                <li id="<?php echo h($element_id); ?>" class="<?php echo $css_class; ?>">
+                    <span class="product-name">
+                        <?php echo h($product); ?>
+                        <span class="quantity-text"><?php echo h($quantity_text); ?></span>
                     </span>
                     
-                    <div class="formularz-ilosc" data-ilosc="<?php echo $czy_potrzebny ? h($ilosc_tekst) : ''; ?>">
-                        <?php if ($czy_potrzebny): ?>
-                            <form method="POST" style="display:inline;" onsubmit="animKupiono(this)">
-                                <input type="hidden" name="produkt" value="<?php echo h($produkt); ?>">
-                                <input type="hidden" name="sklep" value="<?php echo h($sklep_nazwa); ?>">
+                    <div class="quantity-form" 
+                         data-quantity="<?php echo $is_needed ? h($quantity_text) : ''; ?>"
+                         data-have-text="<?php echo h(__('product.have')); ?>">
+                        <?php if ($is_needed): ?>
+                            <form method="POST" style="display:inline;" onsubmit="animateBought(this)">
+                                <input type="hidden" name="product" value="<?php echo h($product); ?>">
+                                <input type="hidden" name="store" value="<?php echo h($store_name); ?>">
                                 <input type="hidden" name="_csrf" value="<?php echo h(csrf_token()); ?>">
-                                <button type="submit" name="oznacz_jako_mam" class="przycisk przycisk-mam">
-                                    ✓ Kupione
+                                <button type="submit" name="mark_as_bought" class="btn btn-bought">
+                                    <?php _e('product.bought'); ?>
                                 </button>
                             </form>
                         <?php else: ?>
                             <form method="POST" style="display:inline;" onsubmit="saveScroll()">
                                 <input type="number" 
-                                       name="ilosc" 
-                                       value="<?php echo h($wartosc_input); ?>" 
+                                       name="quantity" 
+                                       value="<?php echo h($input_value); ?>" 
                                        min="0" 
-                                       class="wejscie-ilosc"
+                                       class="quantity-input"
                                        placeholder="1">
-                                <span class="jednostka-miary"><?php echo h($jednostka); ?></span>
-                                <input type="hidden" name="produkt" value="<?php echo h($produkt); ?>">
-                                <input type="hidden" name="sklep" value="<?php echo h($sklep_nazwa); ?>">
+                                <span class="unit-label"><?php echo h($unit); ?></span>
+                                <input type="hidden" name="product" value="<?php echo h($product); ?>">
+                                <input type="hidden" name="store" value="<?php echo h($store_name); ?>">
                                 <input type="hidden" name="_csrf" value="<?php echo h(csrf_token()); ?>">
-                                <button type="submit" name="ustaw_ilosc" class="przycisk przycisk-zmien">
-                                    Kup
+                                <button type="submit" name="set_quantity" class="btn btn-change">
+                                    <?php _e('product.buy'); ?>
                                 </button>
                             </form>
                         <?php endif; ?>
@@ -1292,60 +1409,64 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
     <?php endforeach; ?>
 
     <script>
+        // ========================================
+        // KONFIGURACJA Z PHP / CONFIG FROM PHP
+        // ========================================
+        
+        const BASE_PATH = <?php echo json_encode($base_path); ?>;
+        const CSRF_TOKEN = <?php echo json_encode(csrf_token()); ?>;
+        const STORES_WITH_PRODUCTS = <?php echo json_encode($stores_with_products); ?>;
+        const CURRENT_LANG = <?php echo json_encode(getCurrentLang()); ?>;
+        
+        // Tłumaczenia dla JS / Translations for JS
+        const T = <?php echo json_encode($js_translations); ?>;
 
-		// Ścieżka bazowa (z PHP) - bezpiecznie enkodowana
-		const BASE_PATH = <?php echo json_encode($base_path); ?>;
-		
-		// Token CSRF z sesji (do addHiddenFields jeśli potrzeba)
-		const CSRF_TOKEN = <?php echo json_encode(csrf_token()); ?>;
-		
-		// Sklepy z produktami do kupienia (z PHP)
-		const SKLEPY_Z_PRODUKTAMI = <?php echo json_encode($sklepy_z_produktami); ?>;
+        // Przywróć pozycję scrolla / Restore scroll position
+        (function() {
+            const pos = sessionStorage.getItem('shoppingList_scrollPos');
+            if (pos) {
+                document.documentElement.scrollTop = parseInt(pos);
+                document.body.scrollTop = parseInt(pos);
+            }
+        })();
 
-		(function() {
-			const pos = sessionStorage.getItem('shoppingList_scrollPos');
-			if (pos) {
-				document.documentElement.scrollTop = parseInt(pos);
-				document.body.scrollTop = parseInt(pos);
-			}
-		})();
-
-        const STORAGE_HIDE = 'listaZakupow_ukryte';
+        // Klucze storage / Storage keys
+        const STORAGE_HIDE = 'shoppingList_hidden';
         const STORAGE_SCROLL = 'shoppingList_scrollPos';
-        const STORAGE_SKLEPY = 'karteczka_wybrane_sklepy';
+        const STORAGE_STORES = 'shoppingList_selectedStores';
         
-        const checkboxes = document.querySelectorAll('.checkboxSklep');
+        const checkboxes = document.querySelectorAll('.store-checkbox');
         
         // ========================================
-        // Toggle ukrywania
+        // Toggle ukrywania kupionych / Toggle hiding bought
         // ========================================
         
-        function toggleUkryj() {
-            const mam = document.querySelectorAll('.status-have');
-            const anyVisible = Array.from(mam).some(el => !el.classList.contains('ukryty'));
+        function toggleHide() {
+            const haveItems = document.querySelectorAll('.status-have');
+            const anyVisible = Array.from(haveItems).some(el => !el.classList.contains('hidden'));
             
-            mam.forEach(el => {
+            haveItems.forEach(el => {
                 if (anyVisible) {
-                    el.classList.add('ukryty');
+                    el.classList.add('hidden');
                 } else {
-                    el.classList.remove('ukryty');
+                    el.classList.remove('hidden');
                 }
             });
             
-            localStorage.setItem(STORAGE_HIDE, anyVisible ? 'ukryte' : 'pokazane');
-            ukryjPusteSklepy();
+            localStorage.setItem(STORAGE_HIDE, anyVisible ? 'hidden' : 'visible');
+            hideEmptyStores();
             updateToggleIcon();
         }
         
-        function ukryjPusteSklepy() {
-            document.querySelectorAll('.sklep-sekcja').forEach(sekcja => {
-                const widoczne = sekcja.querySelectorAll('li:not(.ukryty)');
-                sekcja.classList.toggle('ukryty', widoczne.length === 0);
+        function hideEmptyStores() {
+            document.querySelectorAll('.store-section').forEach(section => {
+                const visibleItems = section.querySelectorAll('li:not(.hidden)');
+                section.classList.toggle('hidden', visibleItems.length === 0);
             });
         }
         
         // ========================================
-        // Aktualizacja ikony Toggle
+        // Aktualizacja ikony Toggle / Update toggle icon
         // ========================================
         
         function updateToggleIcon() {
@@ -1354,145 +1475,148 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
             
             const hideState = localStorage.getItem(STORAGE_HIDE);
             
-            if (hideState === 'ukryte') {
-                // Kupione są ukryte → pokaż "oko" i title "Pokaż wszystkie"
+            if (hideState === 'hidden') {
                 btn.textContent = '👁️';
-                btn.title = 'Pokaż wszystkie';
+                btn.title = T.show_all || 'Show all';
             } else {
-                // Wszystko widoczne → pokaż "koszyk" i title "Tylko koszyk"
                 btn.textContent = '🛒';
-                btn.title = 'Tylko koszyk';
+                btn.title = T.cart_only || 'Cart only';
             }
         }
         
-		// ========================================
-		// Sklepy
-		// ========================================
+        // ========================================
+        // Obsługa sklepów / Store handling
+        // ========================================
 
-		function loadSklepy() {
-			const urlParams = new URLSearchParams(window.location.search);
-			const fromUrl = urlParams.get('sklepy');
-			
-			if (fromUrl !== null) {
-				// Parametr istnieje w URL (nawet jeśli pusty)
-				localStorage.setItem(STORAGE_SKLEPY, fromUrl);
-				const lista = fromUrl.split(',').filter(s => s.trim() !== '');
-				checkboxes.forEach(ch => ch.checked = lista.includes(ch.value));
-			} else {
-				// Brak parametru w URL - sprawdź localStorage
-				const saved = localStorage.getItem(STORAGE_SKLEPY);
-				if (saved !== null) {
-					// Jest w localStorage
-					const lista = saved.split(',').filter(s => s.trim() !== '');
-					checkboxes.forEach(ch => ch.checked = lista.includes(ch.value));
-				} else {
-					// Pierwsze uruchomienie - zaznacz wszystkie
-					checkboxes.forEach(ch => ch.checked = true);
-				}
-			}
-			
-			updateShopsToggleButton();
-		}
+        function loadStores() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const fromUrl = urlParams.get('sklepy');
+            
+            if (fromUrl !== null) {
+                localStorage.setItem(STORAGE_STORES, fromUrl);
+                const list = fromUrl.split(',').filter(s => s.trim() !== '');
+                checkboxes.forEach(ch => ch.checked = list.includes(ch.value));
+            } else {
+                const saved = localStorage.getItem(STORAGE_STORES);
+                if (saved !== null) {
+                    const list = saved.split(',').filter(s => s.trim() !== '');
+                    checkboxes.forEach(ch => ch.checked = list.includes(ch.value));
+                } else {
+                    checkboxes.forEach(ch => ch.checked = true);
+                }
+            }
+            
+            updateStoresToggleButton();
+        }
 
-		function saveSklepy() {
-			const wybrane = Array.from(checkboxes)
-				.filter(ch => ch.checked)
-				.map(ch => ch.value);
-			
-			const sklepyParam = wybrane.join(',');
-			localStorage.setItem(STORAGE_SKLEPY, sklepyParam);
-			
-			// ZAWSZE przekazuj parametr sklepy (nawet pusty)
-			const url = BASE_PATH + '/?sklepy=' + encodeURIComponent(sklepyParam);
-			sessionStorage.setItem(STORAGE_SCROLL, window.scrollY);
-			window.location.href = url;
-		}
+        function saveStores() {
+            const selected = Array.from(checkboxes)
+                .filter(ch => ch.checked)
+                .map(ch => ch.value);
+            
+            const storesParam = selected.join(',');
+            localStorage.setItem(STORAGE_STORES, storesParam);
+            
+            const url = BASE_PATH + '/?sklepy=' + encodeURIComponent(storesParam);
+            sessionStorage.setItem(STORAGE_SCROLL, window.scrollY);
+            window.location.href = url;
+        }
 
-		function toggleAllShops() {
-			const anyChecked = Array.from(checkboxes).some(ch => ch.checked);
-			
-			if (anyChecked) {
-				// Są jakieś zaznaczone - ODZNACZ wszystkie
-				checkboxes.forEach(ch => ch.checked = false);
-			} else {
-				// Żadne nie zaznaczone - ZAZNACZ wszystkie
-				checkboxes.forEach(ch => ch.checked = true);
-			}
-			
-			updateShopsToggleButton();
-			saveSklepy();
-		}
-		
-		function odswiezListe() {
-			sessionStorage.setItem(STORAGE_SCROLL, window.scrollY);
-			location.reload();
-		}		
+        function toggleAllStores() {
+            const anyChecked = Array.from(checkboxes).some(ch => ch.checked);
+            
+            if (anyChecked) {
+                checkboxes.forEach(ch => ch.checked = false);
+            } else {
+                checkboxes.forEach(ch => ch.checked = true);
+            }
+            
+            updateStoresToggleButton();
+            saveStores();
+        }
+        
+        function refreshList() {
+            sessionStorage.setItem(STORAGE_SCROLL, window.scrollY);
+            location.reload();
+        }        
 
-		function updateShopsToggleButton() {
-			const btnToggle = document.querySelector('.btn-all-shops');
-			if (!btnToggle) return;
-			
-			const anyChecked = Array.from(checkboxes).some(ch => ch.checked);
-			btnToggle.textContent = anyChecked ? 'odznacz wszystkie' : 'zaznacz wszystkie';
-		}
+        function updateStoresToggleButton() {
+            const btnToggle = document.querySelector('.btn-all-stores');
+            if (!btnToggle) return;
+            
+            const anyChecked = Array.from(checkboxes).some(ch => ch.checked);
+            btnToggle.textContent = anyChecked ? (T.deselect_all || 'deselect all') : (T.select_all || 'select all');
+        }
 
-		checkboxes.forEach(ch => {
-			ch.addEventListener('change', () => {
-				updateShopsToggleButton();
-				saveSklepy();
-			});
-		});
+        checkboxes.forEach(ch => {
+            ch.addEventListener('change', () => {
+                updateStoresToggleButton();
+                saveStores();
+            });
+        });
 
+        // ========================================
+        // Reset sklepów (badge click) / Reset stores
+        // ========================================
 
-		// ========================================
-		// Reset sklepów (badge click)
-		// ========================================
-
-		function resetSklepy(event) {
-			event.preventDefault();
-			
-			// Zaznacz TYLKO sklepy z produktami do kupienia
-			const sklepyParam = SKLEPY_Z_PRODUKTAMI.join(',');
-			localStorage.setItem(STORAGE_SKLEPY, sklepyParam);
-			
-			// Ustaw widok na "ukryte" (tylko potrzebne)
-			localStorage.setItem(STORAGE_HIDE, 'ukryte');
-			
-			// Scroll na górę
-			sessionStorage.setItem(STORAGE_SCROLL, 0);
-			
-			// Przekieruj z parametrem sklepy
-			window.location.href = BASE_PATH + '/?sklepy=' + encodeURIComponent(sklepyParam);
-		}
+        function resetStores(event) {
+            event.preventDefault();
+            
+            const storesParam = STORES_WITH_PRODUCTS.join(',');
+            localStorage.setItem(STORAGE_STORES, storesParam);
+            localStorage.setItem(STORAGE_HIDE, 'hidden');
+            sessionStorage.setItem(STORAGE_SCROLL, 0);
+            
+            window.location.href = BASE_PATH + '/?sklepy=' + encodeURIComponent(storesParam);
+        }
         
         // ========================================
-        // Scroll & animacje
+        // Przełączanie języka / Language dropdown
+        // ========================================
+        
+        function toggleLangDropdown(event) {
+            event.stopPropagation();
+            const dropdown = document.getElementById('langDropdown');
+            dropdown.classList.toggle('show');
+        }
+        
+        // Zamknij dropdown po kliknięciu gdziekolwiek / Close dropdown on click outside
+        document.addEventListener('click', function(event) {
+            const dropdown = document.getElementById('langDropdown');
+            const langBtn = document.querySelector('.btn-lang');
+            
+            if (dropdown && !dropdown.contains(event.target) && event.target !== langBtn) {
+                dropdown.classList.remove('show');
+            }
+        });
+        
+        // ========================================
+        // Scroll & animacje / Scroll & animations
         // ========================================
         
         function saveScroll() {
             sessionStorage.setItem(STORAGE_SCROLL, window.scrollY);
         }
         
-		function restoreScroll() {
-			const pos = sessionStorage.getItem(STORAGE_SCROLL);
-			if (pos) {
-				const scrollPos = parseInt(pos);
-				
-				// Dodatkowe wymuszenie na wszelki wypadek
-				window.scrollTo({
-					top: scrollPos,
-					behavior: 'instant'
-				});
-				
-				setTimeout(() => {
-					sessionStorage.removeItem(STORAGE_SCROLL);
-				}, 100);
-			}
-		}
+        function restoreScroll() {
+            const pos = sessionStorage.getItem(STORAGE_SCROLL);
+            if (pos) {
+                const scrollPos = parseInt(pos);
+                
+                window.scrollTo({
+                    top: scrollPos,
+                    behavior: 'instant'
+                });
+                
+                setTimeout(() => {
+                    sessionStorage.removeItem(STORAGE_SCROLL);
+                }, 100);
+            }
+        }
         
-        function animKupiono(form) {
+        function animateBought(form) {
             const li = form.closest('li');
-            if (li) li.classList.add('kupiono-anim');
+            if (li) li.classList.add('bought-anim');
             saveScroll();
         }
         
@@ -1501,17 +1625,17 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
         });
         
         // ========================================
-        // Ukryte pola w formularzach (dodaj widoczne_sklepy i CSRF jeśli nie ma)
+        // Ukryte pola w formularzach / Hidden form fields
         // ========================================
         
         function addHiddenFields() {
-            const sklepy = localStorage.getItem(STORAGE_SKLEPY) || '';
+            const stores = localStorage.getItem(STORAGE_STORES) || '';
             document.querySelectorAll('form').forEach(f => {
-                if (!f.querySelector('input[name="widoczne_sklepy"]')) {
+                if (!f.querySelector('input[name="visible_stores"]')) {
                     const h = document.createElement('input');
                     h.type = 'hidden';
-                    h.name = 'widoczne_sklepy';
-                    h.value = sklepy;
+                    h.name = 'visible_stores';
+                    h.value = stores;
                     f.appendChild(h);
                 }
                 if (!f.querySelector('input[name="_csrf"]')) {
@@ -1525,17 +1649,17 @@ foreach ($produkty_sklepy as $sklep_nazwa => $produkty_w_sklepie) {
         }
         
         // ========================================
-        // Init
+        // Inicjalizacja / Initialization
         // ========================================
         
         document.addEventListener('DOMContentLoaded', () => {
-            loadSklepy();
+            loadStores();
             
             const hideState = localStorage.getItem(STORAGE_HIDE);
-            if (hideState === 'ukryte') {
-                document.querySelectorAll('.status-have').forEach(el => el.classList.add('ukryty'));
+            if (hideState === 'hidden') {
+                document.querySelectorAll('.status-have').forEach(el => el.classList.add('hidden'));
             }
-            ukryjPusteSklepy();
+            hideEmptyStores();
             updateToggleIcon();
             
             addHiddenFields();
