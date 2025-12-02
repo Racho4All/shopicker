@@ -128,6 +128,7 @@ return [
         
         // Komunikaty
         'save_success' => 'Zmiany zostały zapisane pomyślnie!',
+		'saved' => 'Zapisano',
         'save_error' => 'Błąd zapisu pliku!',
         'no_results' => 'Nie znaleziono wyników',
         'try_different_keywords' => 'Spróbuj użyć innych słów kluczowych',

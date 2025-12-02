@@ -128,6 +128,7 @@ return [
         
         // Správy
         'save_success' => 'Zmeny boli úspešne uložené!',
+		'saved' => 'Uložené',
         'save_error' => 'Chyba pri ukladaní súboru!',
         'no_results' => 'Nenašli sa žiadne výsledky',
         'try_different_keywords' => 'Skúste použiť iné kľúčové slová',

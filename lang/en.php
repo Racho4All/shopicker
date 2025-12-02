@@ -128,6 +128,7 @@ return [
         
         // Messages
         'save_success' => 'Changes saved successfully!',
+		'saved' => 'Saved',
         'save_error' => 'Error saving file!',
         'no_results' => 'No results found',
         'try_different_keywords' => 'Try using different keywords',

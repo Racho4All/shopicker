@@ -163,8 +163,25 @@ if (empty($_SESSION['auth'])) {
 }
 // === KONIEC AUTH / END AUTH ===
 
+$expand_stores = '';
+if (isset($_GET['expand'])) {
+    $expand_stores = $_GET['expand'];
+} elseif (isset($_POST['_expand_stores'])) {
+    $expand_stores = $_POST['_expand_stores'];
+}
+$return_url = $base_path . '/' . ($expand_stores !== '' ? '?sklepy=' . rawurlencode($expand_stores) : '');
+
 header('Cache-Control: no-cache, must-revalidate');
 header('Expires: Mon, 26 Jul 1997 05:00:00 GMT');
+
+// Zachowaj sklepy do powrotu / Keep stores for return
+$expand_stores = '';
+if (isset($_GET['expand'])) {
+    $expand_stores = $_GET['expand'];
+} elseif (isset($_POST['_expand_stores'])) {
+    $expand_stores = $_POST['_expand_stores'];
+}
+$return_url = $base_path . '/' . ($expand_stores !== '' ? '?sklepy=' . rawurlencode($expand_stores) : '');
 
 $config_products_file = __DIR__ . '/produkty_sklepy.php';
 $backup_version = __DIR__ . '/produkty_sklepy_backup_' . date('Y-m-d_His') . '.php';
@@ -1416,7 +1433,50 @@ if (!is_array($js_translations)) {
 			outline: 3px solid var(--primary-color);
 			outline-offset: 2px;
 		}
+		/* ========================================
+		   TOAST NOTIFICATION
+		   ======================================== */
 
+		.toast {
+			position: fixed;
+			bottom: 30px;
+			left: 50%;
+			transform: translateX(-50%);
+			background: #4CAF50;
+			color: white;
+			padding: 16px 32px;
+			border-radius: 50px;
+			font-weight: 600;
+			font-size: 1.1em;
+			box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+			z-index: 2000;
+			display: flex;
+			align-items: center;
+			gap: 10px;
+			animation: toastIn 0.4s ease, toastOut 0.4s ease 2.6s forwards;
+		}
+
+		@keyframes toastIn {
+			from {
+				opacity: 0;
+				transform: translateX(-50%) translateY(20px) scale(0.9);
+			}
+			to {
+				opacity: 1;
+				transform: translateX(-50%) translateY(0) scale(1);
+			}
+		}
+
+		@keyframes toastOut {
+			from {
+				opacity: 1;
+				transform: translateX(-50%) translateY(0) scale(1);
+			}
+			to {
+				opacity: 0;
+				transform: translateX(-50%) translateY(-20px) scale(0.9);
+			}
+		}
 	</style>
 </head>
 <body>
@@ -1432,25 +1492,14 @@ if (!is_array($js_translations)) {
 			<span id="currentStoreName"></span> <span class="store-product-icon">📦</span> <span id="currentStoreProductCount"></span>
 		</div>
 		<div>
-			<a href="<?php echo h($base_path); ?>/" class="btn-header"><?php _e('editor.back_to_list'); ?></a>
+			<a href="<?php echo h($return_url); ?>" class="btn-header"><?php _e('editor.back_to_list'); ?></a>
 		</div>
 	</div>
 		
     <div class="editor-container">
-		<?php if ($message): ?>
-			<div class="message <?php echo h($message_type); ?>">
-				<?php if ($message_type === 'error'): ?>
-					<?php echo nl2br(h($message)); ?>
-				<?php else: ?>
-					<?php echo h($message); ?>
-				<?php endif; ?>
-				<?php if ($saved_successfully): ?>
-					<div style="margin-top: 15px;">
-						<a href="<?php echo h($base_path); ?>/" class="btn-return-success">
-							<?php _e('editor.back_to_list'); ?>
-						</a>
-					</div>
-				<?php endif; ?>
+		<?php if ($message && $message_type === 'error'): ?>
+			<div class="message error">
+				<?php echo nl2br(h($message)); ?>
 			</div>
 		<?php endif; ?>
 
@@ -1474,9 +1523,11 @@ if (!is_array($js_translations)) {
             </div>
         </div>
 
-        <form method="POST" id="editForm">
-            <!-- CSRF token -->
-            <input type="hidden" name="_csrf" value="<?php echo h(csrf_token()); ?>">
+		<form method="POST" id="editForm">
+			<!-- CSRF token -->
+			<input type="hidden" name="_csrf" value="<?php echo h(csrf_token()); ?>">
+			<!-- Zachowaj sklepy do powrotu / Keep stores for return -->
+			<input type="hidden" name="_expand_stores" value="<?php echo h($expand_stores); ?>">
 
             <div id="storesContainer">
                 <?php $store_index = 0; ?>
@@ -1564,7 +1615,7 @@ if (!is_array($js_translations)) {
 
 			<div class="action-buttons">
 				<button type="submit" name="save" class="btn-save">💾 <?php _e('editor.save_changes'); ?></button>
-				<a href="<?php echo h($base_path); ?>/" class="btn-cancel">❌ <?php _e('editor.cancel'); ?></a>
+				<a href="<?php echo h($return_url); ?>" class="btn-cancel">❌ <?php _e('editor.cancel'); ?></a>
 			</div>
         </form>
     </div>
@@ -1771,15 +1822,52 @@ if (!is_array($js_translations)) {
             return saved ? JSON.parse(saved) : {};
         }
 
-        function restoreCollapsedStates() {
-            const states = getCollapsedStates();
-            document.querySelectorAll('.store-editor').forEach(store => {
-                const index = store.dataset.storeIndex;
-                if (states[index]) {
-                    store.classList.add('collapsed');
-                }
-            });
-        }
+		function restoreCollapsedStates() {
+			// Sprawdź czy mamy parametr expand z listy zakupów
+			const urlParams = new URLSearchParams(window.location.search);
+			const expandParam = urlParams.get('expand');
+			
+			if (expandParam !== null) {
+				// Przyszliśmy z listy zakupów - rozwiń tylko wybrane sklepy
+				const storesToExpand = expandParam.split(',')
+					.map(s => s.trim().toLowerCase())
+					.filter(s => s.length > 0);
+				
+				document.querySelectorAll('.store-editor').forEach(store => {
+					const storeInput = store.querySelector('.store-header input[type="text"]');
+					const storeName = storeInput ? storeInput.value.trim().toLowerCase() : '';
+					
+					if (storesToExpand.length === 0) {
+						// Pusty parametr = zwiń wszystkie
+						store.classList.add('collapsed');
+					} else if (storesToExpand.includes(storeName)) {
+						// Ten sklep był wybrany - rozwiń
+						store.classList.remove('collapsed');
+					} else {
+						// Ten sklep nie był wybrany - zwiń
+						store.classList.add('collapsed');
+					}
+				});
+				
+				// Przewiń do pierwszego rozwiniętego sklepu
+				setTimeout(() => {
+					const firstExpanded = document.querySelector('.store-editor:not(.collapsed)');
+					if (firstExpanded) {
+						firstExpanded.scrollIntoView({ behavior: 'smooth', block: 'start' });
+					}
+				}, 100);
+				
+			} else {
+				// Normalne wejście do edytora - użyj zapisanych stanów
+				const states = getCollapsedStates();
+				document.querySelectorAll('.store-editor').forEach(store => {
+					const index = store.dataset.storeIndex;
+					if (states[index]) {
+						store.classList.add('collapsed');
+					}
+				});
+			}
+		}
 
         document.getElementById('btnExpandAll')?.addEventListener('click', () => {
             document.querySelectorAll('.store-editor').forEach(store => {
@@ -2371,6 +2459,16 @@ if (!is_array($js_translations)) {
             }
         });
     </script>
-
+	<?php if ($saved_successfully): ?>
+	<div class="toast" id="successToast">
+		✓ <?php _e('editor.saved'); ?>
+	</div>
+	<script>
+		// Usuń toast po animacji / Remove toast after animation
+		setTimeout(() => {
+			document.getElementById('successToast')?.remove();
+		}, 3000);
+	</script>
+	<?php endif; ?>
 </body>
 </html>

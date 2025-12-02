@@ -1264,9 +1264,9 @@ if (!is_array($js_translations)) {
             <button class="btn-top btn-refresh" onclick="refreshList()" title="<?php _e('ui.refresh'); ?>">
                 🔄
             </button>
-            <a href="<?php echo h($base_path); ?>/edit.php" class="btn-top btn-edit" title="<?php _e('ui.edit'); ?>">
+            <a href="<?php echo h($base_path); ?>/edit.php" class="btn-top btn-edit" id="btnEdit" title="<?php _e('ui.edit'); ?>">
                 ✏️
-            </a>
+			</a>
             <div class="lang-dropdown">
                 <button class="btn-top btn-lang" onclick="toggleLangDropdown(event)" title="<?php _e('ui.language'); ?>">
                     <?php echo I18n::getInstance()->getLangMeta(getCurrentLang(), 'flag') ?? '🌐'; ?>
@@ -1665,6 +1665,20 @@ if (!is_array($js_translations)) {
             addHiddenFields();
             restoreScroll();
         });
+		
+		// ========================================
+		// Przekazanie sklepów do edytora / Pass stores to editor
+		// ========================================
+
+		document.getElementById('btnEdit')?.addEventListener('click', function(e) {
+			e.preventDefault();
+			sessionStorage.setItem(STORAGE_SCROLL, window.scrollY);
+			const stores = localStorage.getItem(STORAGE_STORES) || '';
+			const url = BASE_PATH + '/edit.php' + (stores ? '?expand=' + encodeURIComponent(stores) : '');
+			window.location.href = url;
+		});
+		
+		
     </script>
 
 </body>
