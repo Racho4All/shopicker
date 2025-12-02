@@ -1838,24 +1838,23 @@ if (!is_array($js_translations)) {
 					const storeName = storeInput ? storeInput.value.trim().toLowerCase() : '';
 					
 					if (storesToExpand.length === 0) {
-						// Pusty parametr = zwiń wszystkie
 						store.classList.add('collapsed');
 					} else if (storesToExpand.includes(storeName)) {
-						// Ten sklep był wybrany - rozwiń
 						store.classList.remove('collapsed');
 					} else {
-						// Ten sklep nie był wybrany - zwiń
 						store.classList.add('collapsed');
 					}
 				});
 				
-				// Przewiń do pierwszego rozwiniętego sklepu
-				setTimeout(() => {
-					const firstExpanded = document.querySelector('.store-editor:not(.collapsed)');
-					if (firstExpanded) {
-						firstExpanded.scrollIntoView({ behavior: 'smooth', block: 'start' });
-					}
-				}, 100);
+				// Przewiń TYLKO jeśli nie przywracamy pozycji po zapisie
+				if (!skipAutoScroll) {
+					setTimeout(() => {
+						const firstExpanded = document.querySelector('.store-editor:not(.collapsed)');
+						if (firstExpanded) {
+							firstExpanded.scrollIntoView({ behavior: 'smooth', block: 'start' });
+						}
+					}, 100);
+				}
 				
 			} else {
 				// Normalne wejście do edytora - użyj zapisanych stanów
@@ -2263,21 +2262,24 @@ if (!is_array($js_translations)) {
             lastScrollTop = scrollPos <= 0 ? 0 : scrollPos;
         }
 
-        function submitFromFloating() {
-            const editForm = document.getElementById('editForm');
-            const saveButton = editForm.querySelector('button[name="save"]');
-            
-            if (saveButton) {
-                saveButton.click();
-            } else {
-                const hiddenInput = document.createElement('input');
-                hiddenInput.type = 'hidden';
-                hiddenInput.name = 'save';
-                hiddenInput.value = '1';
-                editForm.appendChild(hiddenInput);
-                editForm.submit();
-            }
-        }
+		function submitFromFloating() {
+			// Zapisz pozycję scrolla przed wysłaniem
+			sessionStorage.setItem('shopicker_scroll', window.scrollY.toString());
+			
+			const editForm = document.getElementById('editForm');
+			const saveButton = editForm.querySelector('button[name="save"]');
+			
+			if (saveButton) {
+				saveButton.click();
+			} else {
+				const hiddenInput = document.createElement('input');
+				hiddenInput.type = 'hidden';
+				hiddenInput.name = 'save';
+				hiddenInput.value = '1';
+				editForm.appendChild(hiddenInput);
+				editForm.submit();
+			}
+		}
 
         // ========================================
         // WSKAŹNIK AKTUALNEGO SKLEPU / CURRENT STORE INDICATOR
@@ -2364,57 +2366,74 @@ if (!is_array($js_translations)) {
             });
         }
 
-        // ========================================
-        // INICJALIZACJA / INITIALIZATION
-        // ========================================
+		// ========================================
+		// INICJALIZACJA / INITIALIZATION
+		// ========================================
 
-        let formChanged = false;
+		let formChanged = false;
+		let skipAutoScroll = false; // NOWA FLAGA
 
-        document.addEventListener('DOMContentLoaded', () => {
-            setupStoreDragAndDrop();
-            setupProductDragAndDrop();
-            restoreCollapsedStates();
-            updateCurrentStoreIndicator();
+		document.addEventListener('DOMContentLoaded', () => {
+			// NOWE: Sprawdź czy przywracamy pozycję po zapisie
+			const savedScroll = sessionStorage.getItem('shopicker_scroll');
+			if (savedScroll !== null) {
+				skipAutoScroll = true; // Zablokuj wszystkie auto-scrolle
+				sessionStorage.removeItem('shopicker_scroll');
+				
+				// Przywróć pozycję z większym opóźnieniem
+				setTimeout(() => {
+					window.scrollTo({
+						top: parseInt(savedScroll, 10),
+						behavior: 'instant'
+					});
+				}, 150);
+			}
 
-            floatingButtonElement = document.getElementById('floatingButton');
-            
-            if (floatingButtonElement) {
-                let scrollTimeout;
-                window.addEventListener('scroll', () => {
-                    if (scrollTimeout) clearTimeout(scrollTimeout);
-                    scrollTimeout = setTimeout(showFloatingButton, 50);
-                });
+			setupStoreDragAndDrop();
+			setupProductDragAndDrop();
+			restoreCollapsedStates();
+			updateCurrentStoreIndicator();
 
-                showFloatingButton();
-            }
+			floatingButtonElement = document.getElementById('floatingButton');
+			
+			if (floatingButtonElement) {
+				let scrollTimeout;
+				window.addEventListener('scroll', () => {
+					if (scrollTimeout) clearTimeout(scrollTimeout);
+					scrollTimeout = setTimeout(showFloatingButton, 50);
+				});
 
-            const editForm = document.getElementById('editForm');
-            
-            if (editForm) {
-                editForm.addEventListener('change', () => {
-                    formChanged = true;
-                });
+				showFloatingButton();
+			}
 
-                editForm.addEventListener('input', () => {
-                    formChanged = true;
-                });
+			const editForm = document.getElementById('editForm');
+			
+			if (editForm) {
+				editForm.addEventListener('change', () => {
+					formChanged = true;
+				});
 
-                editForm.addEventListener('submit', () => {
-                    formChanged = false;
-                });
-            }
+				editForm.addEventListener('input', () => {
+					formChanged = true;
+				});
 
-            window.addEventListener('beforeunload', (e) => {
-                if (formChanged) {
-                    e.preventDefault();
-                    e.returnValue = T.unsaved_changes || 'You have unsaved changes. Are you sure you want to leave?';
-                }
-            });
+				editForm.addEventListener('submit', () => {
+					formChanged = false;
+					sessionStorage.setItem('shopicker_scroll', window.scrollY.toString());
+				});
+			}
 
-            document.querySelectorAll('.store-editor').forEach(store => {
-                updateProductCounter(store);
-            });
-        });
+			window.addEventListener('beforeunload', (e) => {
+				if (formChanged) {
+					e.preventDefault();
+					e.returnValue = T.unsaved_changes || 'You have unsaved changes. Are you sure you want to leave?';
+				}
+			});
+
+			document.querySelectorAll('.store-editor').forEach(store => {
+				updateProductCounter(store);
+			});
+		});
 
         // ========================================
         // SKRÓTY KLAWISZOWE / KEYBOARD SHORTCUTS
