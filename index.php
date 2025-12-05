@@ -725,6 +725,7 @@ if (!is_array($js_translations)) {
         }
 		.buycoffee {
 			text-decoration: none;
+			padding-left: 3px;
 		}
         
         /* ========================================
@@ -1257,7 +1258,7 @@ if (!is_array($js_translations)) {
                 <?php _e('counter.done'); ?>
             <?php endif; ?>
         </a>        
-        <h1 class="logo-text">
+        <h1 class="logo-text" title="Handy web shopping list by racho">
             <img src="<?php echo h($base_path); ?>/assets/favicon.svg" 
                  alt="Logo" 
                  style="height: 1.5em; vertical-align: middle; margin-right: -0.2em">
