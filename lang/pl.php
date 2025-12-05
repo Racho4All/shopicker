@@ -1,6 +1,6 @@
 <?php
 // ============================================
-// SHOPICKER - Tłumaczenia: Polski (pl)
+// SHOPICKER 2.5.1 - Tłumaczenia: Polski (pl)
 // ============================================
 
 return [
@@ -46,11 +46,12 @@ return [
         'step_4' => 'Ustaw PIN i gotowe!',
         'contact_admin' => 'Jeśli problem się powtarza, skontaktuj się z administratorem lub sprawdź',
         'documentation' => 'dokumentację',
-        'error_products_file' => 'Błąd: plik produkty_sklepy.php nie zwrócił poprawnej tablicy.',
+        'error_products_file' => 'Błąd: plik products_stores.php nie zwrócił poprawnej tablicy.',
     ],
     
     // Główny interfejs
     'ui' => [
+		'buycoffee' => 'Idziemy na kawę?',
         'stores' => '🏪 Sklepy',
         'all_stores' => 'wszystkie',
         'select_all' => 'zaznacz wszystkie',

@@ -1,6 +1,6 @@
 <?php
 // ============================================
-// SHOPICKER - Translations: English (en)
+// SHOPICKER 2.5.1 - Translations: English (en)
 // ============================================
 
 return [
@@ -46,11 +46,12 @@ return [
         'step_4' => 'Set your PIN and you\'re done!',
         'contact_admin' => 'If the problem persists, contact your administrator or check the',
         'documentation' => 'documentation',
-        'error_products_file' => 'Error: produkty_sklepy.php file did not return a valid array.',
+        'error_products_file' => 'Error: products_stores.php file did not return a valid array.',
     ],
     
     // Main interface
     'ui' => [
+		'buycoffee' => 'Shall we go for coffee?',
         'stores' => '🏪 Stores',
         'all_stores' => 'all',
         'select_all' => 'select all',

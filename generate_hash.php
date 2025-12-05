@@ -1,7 +1,7 @@
 <?php
 // ============================================
 // SHOPICKER - Setup / Konfiguracja PIN
-// Wersja / Version: 2.5.0
+// Wersja / Version: 2.5.1
 // ============================================
 
 // === AUTO-WYKRYWANIE ŚCIEŻKI / AUTO-DETECT PATH ===

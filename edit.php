@@ -1,7 +1,7 @@
 <?php
 // ============================================
 // SHOPICKER - Edytor listy produktów / Product List Editor
-// Wersja / Version: 2.5.0
+// Wersja / Version: 2.5.1
 // ============================================
 
 // === AUTO-WYKRYWANIE ŚCIEŻKI / AUTO-DETECT PATH ===
@@ -183,8 +183,8 @@ if (isset($_GET['expand'])) {
 }
 $return_url = $base_path . '/' . ($expand_stores !== '' ? '?sklepy=' . rawurlencode($expand_stores) : '');
 
-$config_products_file = __DIR__ . '/produkty_sklepy.php';
-$backup_version = __DIR__ . '/produkty_sklepy_backup_' . date('Y-m-d_His') . '.php';
+$config_products_file = __DIR__ . '/products_stores.php';
+$backup_version = __DIR__ . '/products_stores.php_backup_' . date('Y-m-d_His') . '.php';
 
 // ============================================
 // FUNKCJE POMOCNICZE / HELPER FUNCTIONS

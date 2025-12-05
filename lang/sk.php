@@ -1,6 +1,6 @@
 <?php
 // ============================================
-// SHOPICKER - Preklady: Slovenčina (sk)
+// SHOPICKER 2.5.1 - Preklady: Slovenčina (sk)
 // ============================================
 
 return [
@@ -46,11 +46,12 @@ return [
         'step_4' => 'Nastavte PIN a je to!',
         'contact_admin' => 'Ak problém pretrváva, kontaktujte administrátora alebo si pozrite',
         'documentation' => 'dokumentáciu',
-        'error_products_file' => 'Chyba: súbor produkty_sklepy.php nevrátil platné pole.',
+        'error_products_file' => 'Chyba: súbor products_stores.php nevrátil platné pole.',
     ],
     
     // Hlavné rozhranie
     'ui' => [
+		'buycoffee' => 'Nezájdeme na kávu?',
         'stores' => '🏪 Obchody',
         'all_stores' => 'všetky',
         'select_all' => 'vybrať všetky',

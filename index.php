@@ -1,7 +1,7 @@
 <?php
 // ============================================
 // SHOPICKER - Lista zakupów / Shopping List
-// Wersja / Version: 2.5.0
+// Wersja / Version: 2.5.1
 // ============================================
 
 // === AUTO-WYKRYWANIE ŚCIEŻKI / AUTO-DETECT PATH ===
@@ -391,8 +391,8 @@ header('Cache-Control: no-cache, must-revalidate');
 header('Expires: Mon, 26 Jul 1997 05:00:00 GMT');
 
 // Używaj absolutnej ścieżki dla pliku danych / Use absolute path for data file
-$data_file = __DIR__ . '/statusy_sklepy.txt';
-$products_by_store = require __DIR__ . '/produkty_sklepy.php';
+$data_file = __DIR__ . '/store_orders.txt';
+$products_by_store = require __DIR__ . '/products_stores.php';
 
 if (!is_array($products_by_store)) {
     die(h(__('config.error_products_file')));
@@ -723,6 +723,9 @@ if (!is_array($js_translations)) {
         .btn-hide:hover { 
             background-color: #434d58; 
         }
+		.buycoffee {
+			text-decoration: none;
+		}
         
         /* ========================================
            STICKY TOP BAR
@@ -1099,7 +1102,10 @@ if (!is_array($js_translations)) {
                 font-size: 1.8em;
                 margin-bottom: 4px;
             }
-            
+            .buycoffee {
+				text-decoration: none;
+				padding-left: 10px;
+			}
             .counter-badge {
                 order: 1;
                 font-size: 1em;
@@ -1255,7 +1261,7 @@ if (!is_array($js_translations)) {
             <img src="<?php echo h($base_path); ?>/assets/favicon.svg" 
                  alt="Logo" 
                  style="height: 1.5em; vertical-align: middle; margin-right: -0.2em">
-            <?php echo h(__('app.name')); ?>
+            <?php echo h(__('app.name')); ?><a class="buycoffee" href="https://buycoffee.to/racho" title="<?php _e('ui.buycoffee'); ?>" >☕️</a>
         </h1>
         <div class="top-actions">
             <button class="btn-top btn-toggle" onclick="toggleHide()" id="btnToggle">
