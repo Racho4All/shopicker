@@ -2,7 +2,8 @@
 Handy web shopping list.
 Copyright (c) 2025 Racho4All
 
-# Shopicker 2.5 — Dokumentacja użytkownika  [English version below](#eng)
+# Shopicker 2.5 — Dokumentacja użytkownika
+[English version below](#eng)
 
 Przewodnik dla użytkownika końcowego: logowanie PIN, praca z listą zakupów, edytor produktów/sklepów, ukrywanie kupionych pozycji, bezpieczeństwo (CSRF, blokada PIN).
 
