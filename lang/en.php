@@ -1,6 +1,6 @@
 <?php
 // ============================================
-// SHOPICKER 2.5.1 - Translations: English (en)
+// SHOPICKER 2.5.2 - Translations: English (en)
 // ============================================
 
 return [
@@ -51,7 +51,7 @@ return [
     
     // Main interface
     'ui' => [
-		'buycoffee' => 'Shall we go for coffee?',
+		'buycoffee' => 'Will you buy me a coffee?',
         'stores' => '🏪 Stores',
         'all_stores' => 'all',
         'select_all' => 'select all',
@@ -168,7 +168,7 @@ return [
         'subtitle' => 'Set a PIN to secure access to your shopping list',
         'info_title' => 'ℹ️ One-time configuration',
         'info_text' => 'Your PIN will be hashed and stored securely.<br>This form will delete itself automatically.',
-        'pin_label' => 'PIN (minimum 4 digits)',
+        'pin_label' => 'PIN (from 4 to 6 digits)',
         'pin_placeholder' => '••••',
         'pin_hint' => 'Remember this PIN - you will need it to log in',
         'pin_confirm_label' => 'Confirm PIN',

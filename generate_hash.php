@@ -1,7 +1,7 @@
 <?php
 // ============================================
 // SHOPICKER - Setup / Konfiguracja PIN
-// Wersja / Version: 2.5.1
+// Wersja / Version: 2.5.2
 // ============================================
 
 // === AUTO-WYKRYWANIE ŚCIEŻKI / AUTO-DETECT PATH ===
@@ -603,6 +603,7 @@ $js_translations = [
                            inputmode="numeric"
                            autocomplete="off"
                            minlength="4"
+						   maxlength="6"
                            required>
                     <button type="button" class="toggle-pin" onclick="togglePin('pin')" title="<?php _e('setup.toggle_pin'); ?>">👁️</button>
                 </div>
@@ -620,6 +621,7 @@ $js_translations = [
                            inputmode="numeric"
                            autocomplete="off"
                            minlength="4"
+						   maxlength="6"
                            required>
                     <button type="button" class="toggle-pin" onclick="togglePin('pin_confirm')" title="<?php _e('setup.toggle_pin'); ?>">👁️</button>
                 </div>

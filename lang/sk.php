@@ -1,6 +1,6 @@
 <?php
 // ============================================
-// SHOPICKER 2.5.1 - Preklady: Slovenčina (sk)
+// SHOPICKER 2.5.2 - Preklady: Slovenčina (sk)
 // ============================================
 
 return [
@@ -51,7 +51,7 @@ return [
     
     // Hlavné rozhranie
     'ui' => [
-		'buycoffee' => 'Nezájdeme na kávu?',
+		'buycoffee' => 'Kúpiš mi kávu?',
         'stores' => '🏪 Obchody',
         'all_stores' => 'všetky',
         'select_all' => 'vybrať všetky',
@@ -168,7 +168,7 @@ return [
         'subtitle' => 'Nastavte PIN pre zabezpečenie prístupu k nákupnému zoznamu',
         'info_title' => 'ℹ️ Jednorazová konfigurácia',
         'info_text' => 'PIN bude zahashovaný a bezpečne uložený.<br>Tento formulár sa automaticky odstráni.',
-        'pin_label' => 'PIN (minimálne 4 číslice)',
+        'pin_label' => 'PIN (od 4 do 6 číslic)',
         'pin_placeholder' => '••••',
         'pin_hint' => 'Zapamätajte si tento PIN - budete ho potrebovať na prihlásenie',
         'pin_confirm_label' => 'Potvrďte PIN',

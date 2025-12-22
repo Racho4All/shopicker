@@ -1,6 +1,6 @@
 <?php
 // ============================================
-// SHOPICKER 2.5.1 - Tłumaczenia: Polski (pl)
+// SHOPICKER 2.5.2 - Tłumaczenia: Polski (pl)
 // ============================================
 
 return [
@@ -51,7 +51,7 @@ return [
     
     // Główny interfejs
     'ui' => [
-		'buycoffee' => 'Idziemy na kawę?',
+		'buycoffee' => 'Postawisz mi kawę?',
         'stores' => '🏪 Sklepy',
         'all_stores' => 'wszystkie',
         'select_all' => 'zaznacz wszystkie',
@@ -168,7 +168,7 @@ return [
         'subtitle' => 'Ustaw PIN zabezpieczający dostęp do listy zakupów',
         'info_title' => 'ℹ️ Jednorazowa konfiguracja',
         'info_text' => 'PIN będzie zahaszowany i bezpiecznie zapisany.<br>Ten formularz usunie się automatycznie.',
-        'pin_label' => 'PIN (minimum 4 cyfry)',
+        'pin_label' => 'PIN (od 4 do 6 cyfr)',
         'pin_placeholder' => '••••',
         'pin_hint' => 'Zapamiętaj ten PIN - będzie potrzebny do logowania',
         'pin_confirm_label' => 'Potwierdź PIN',

@@ -1,7 +1,7 @@
 <?php
 // ============================================
 // SHOPICKER - Lista zakupów / Shopping List
-// Wersja / Version: 2.5.1
+// Wersja / Version: 2.5.2
 // ============================================
 
 // === AUTO-WYKRYWANIE ŚCIEŻKI / AUTO-DETECT PATH ===

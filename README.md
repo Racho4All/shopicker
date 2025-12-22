@@ -128,7 +128,7 @@ Użyj przycisku 👁️/🛒 w górnym pasku. Ukrywa/pokazuje pozycje ze statuse
 
 | Symbol | Funkcja |
 |--------|---------|
-| 👁️ / 🛒 | Przełącznik widoczności pozycji „Mam” / „Do kupienia” |
+| 👁️ / 🛒 | Przełącznik widoczności pozycji „Wszystkie” / „Do kupienia” |
 | 🔄 | Odśwież widok listy zakupów (zachowuje scroll) |
 | ✏️ Edycja | Otwiera edytor produktów; przekazuje zaznaczone sklepy jako `?expand=` |
 | 🚪 Wyloguj | Kończy sesję, zachowuje wybrany język |
@@ -137,7 +137,7 @@ Użyj przycisku 👁️/🛒 w górnym pasku. Ukrywa/pokazuje pozycje ze statuse
 
 ---
 
-*Ostatnia aktualizacja: 10 grudnia 2025*
+*Ostatnia aktualizacja: 22 grudnia 2025*
 
 
 ## eng
@@ -270,7 +270,7 @@ No item has a quantity set. Add a quantity or click the counter to reset store f
 
 | Symbol | Function |
 |--------|----------|
-| 👁️ / 🛒 | Toggle visibility of “Have” / “To buy” items |
+| 👁️ / 🛒 | Toggle visibility of “All” / “To buy” items |
 | 🔄 | Refresh shopping list view (keeps scroll) |
 | ✏️ Edit | Opens the product editor; passes selected stores as `?expand=` |
 | 🚪 Logout | Ends the session, keeps selected language |
@@ -279,4 +279,4 @@ No item has a quantity set. Add a quantity or click the counter to reset store f
 
 ---
 
-*Last updated: December 10, 2025*
+*Last updated: December 22, 2025*
