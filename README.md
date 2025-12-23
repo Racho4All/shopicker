@@ -1,6 +1,7 @@
 # Shopicker
 Handy web shopping list.
 Copyright (c) 2025 Racho4All
+
 [Demo](https://shopicker.racho.pl/demo.html)
 
 # Shopicker 2.5 — Dokumentacja użytkownika
